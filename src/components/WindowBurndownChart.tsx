@@ -15,7 +15,6 @@ export default function WindowBurndownChart({ window: w }: { window: UsageWindow
   const data = w.timeline.map((p) => ({
     minute: p.minutesFromStart,
     cumulative: p.cumulativeTokens,
-    perRequest: p.tokens,
   }));
 
   return (
@@ -38,10 +37,7 @@ export default function WindowBurndownChart({ window: w }: { window: UsageWindow
           width={60}
         />
         <Tooltip
-          formatter={(value: number, name: string) => [
-            formatNumber(value),
-            name === "cumulative" ? "Cumulative tokens" : "Per-request tokens",
-          ]}
+          formatter={(value: number) => [formatNumber(value), "Cumulative tokens"]}
           labelFormatter={(m: number) => `${m} min into window`}
           contentStyle={{
             background: "#18181b",
