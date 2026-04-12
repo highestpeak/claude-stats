@@ -8,6 +8,7 @@ import TokensOverTime from "@/components/TokensOverTime";
 import ModelDistribution from "@/components/ModelDistribution";
 import DeveloperMetrics from "@/components/DeveloperMetrics";
 import WeeklyHeatmap from "@/components/WeeklyHeatmap";
+import ExportButton from "@/components/ExportButton";
 
 interface StatsData {
   totalSessions: number;
@@ -73,13 +74,16 @@ export default function Home() {
   }
 
   return (
-    <main className="max-w-7xl mx-auto px-4 py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold">Claude Code Stats</h1>
-        <p className="text-textSecondary mt-1">
-          Since {stats.firstSessionDate?.slice(0, 10) || "N/A"} &middot; Last updated{" "}
-          {stats.lastComputedDate || "N/A"}
-        </p>
+    <main id="export-overview" className="max-w-7xl mx-auto px-4 py-8">
+      <div className="mb-8 flex items-start justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Claude Code Stats</h1>
+          <p className="text-textSecondary mt-1">
+            Since {stats.firstSessionDate?.slice(0, 10) || "N/A"} &middot; Last updated{" "}
+            {stats.lastComputedDate || "N/A"}
+          </p>
+        </div>
+        <ExportButton targetId="export-overview" filename={`claude-stats-overview-${new Date().toISOString().slice(0,10)}.png`} />
       </div>
 
       <div className="space-y-6">

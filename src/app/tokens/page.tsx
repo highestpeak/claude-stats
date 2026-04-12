@@ -4,6 +4,7 @@ import TokenBreakdown from "@/components/TokenBreakdown";
 import CacheEfficiency from "@/components/CacheEfficiency";
 import ModelCostChart from "@/components/ModelCostChart";
 import { formatNumber, formatCurrency } from "@/lib/utils";
+import ExportButton from "@/components/ExportButton";
 
 interface StatsData {
   modelUsage: Record<string, {
@@ -58,8 +59,11 @@ export default function TokensPage() {
   ];
 
   return (
-    <main className="max-w-7xl mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold mb-6">Token Usage</h1>
+    <main id="export-tokens" className="max-w-7xl mx-auto px-4 py-8">
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold">Token Usage</h1>
+        <ExportButton targetId="export-tokens" filename={`claude-stats-tokens-${new Date().toISOString().slice(0,10)}.png`} />
+      </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {summaryCards.map((c) => (

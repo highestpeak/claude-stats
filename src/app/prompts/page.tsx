@@ -3,6 +3,7 @@ import { useEffect, useState, useMemo } from "react";
 import PromptList from "@/components/PromptList";
 import PromptAnalysis from "@/components/PromptAnalysis";
 import type { PromptEntry } from "@/lib/types";
+import ExportButton from "@/components/ExportButton";
 
 export default function PromptsPage() {
   const [prompts, setPrompts]             = useState<PromptEntry[]>([]);
@@ -62,8 +63,11 @@ export default function PromptsPage() {
   }
 
   return (
-    <main className="max-w-7xl mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold mb-6">Prompt History</h1>
+    <main id="export-prompts" className="max-w-7xl mx-auto px-4 py-8">
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold">Prompt History</h1>
+        <ExportButton targetId="export-prompts" filename={`claude-stats-prompts-${new Date().toISOString().slice(0,10)}.png`} />
+      </div>
 
       <div className="flex gap-3 mb-6 flex-wrap">
         <input
