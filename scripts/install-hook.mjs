@@ -3,11 +3,10 @@
 // One-shot: adds a Claude Code Stop hook that auto-runs collect-usage.mjs after
 // every session. Safe to re-run — checks for an existing entry first.
 
-import { readFileSync, writeFileSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { join, resolve, dirname } from 'node:path';
 import { homedir } from 'node:os';
 import { fileURLToPath } from 'node:url';
-import { dirname } from 'node:path';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -17,7 +16,9 @@ const SCRIPT_PATH = resolve(__dirname, 'collect-usage.mjs');
 // Redirect stdout/stderr to a log file so the hook never interferes with sessions.
 const COMMAND = `node "${SCRIPT_PATH}" >> /tmp/claude-usage-collect.log 2>&1`;
 
-const settings = JSON.parse(readFileSync(SETTINGS_FILE, 'utf8'));
+const settings = existsSync(SETTINGS_FILE)
+  ? JSON.parse(readFileSync(SETTINGS_FILE, 'utf8'))
+  : {};
 
 if (!settings.hooks) settings.hooks = {};
 if (!settings.hooks.Stop) settings.hooks.Stop = [];
