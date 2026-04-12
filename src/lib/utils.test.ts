@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { calcStreaks, decodeProjectName, topWords, calcCacheSavings } from './utils';
+import { calcStreaks, decodeProjectName, topWords, calcCacheSavings, formatNumber } from './utils';
 
 describe('calcStreaks', () => {
   it('returns zeros for empty input', () => {
@@ -48,6 +48,21 @@ describe('topWords', () => {
   });
   it('handles empty input', () => {
     expect(topWords([], 5)).toEqual([]);
+  });
+});
+
+describe('formatNumber', () => {
+  it('formats millions', () => {
+    expect(formatNumber(1_500_000)).toBe('1.5M');
+  });
+  it('formats K without bleeding into M range', () => {
+    expect(formatNumber(999_949)).toBe('999.9K');
+  });
+  it('formats the 999,950 boundary as M', () => {
+    expect(formatNumber(999_999)).toBe('1.0M');
+  });
+  it('formats small numbers', () => {
+    expect(formatNumber(500)).toBe('500');
   });
 });
 
