@@ -17,10 +17,25 @@ interface StatsData {
 
 export default function TokensPage() {
   const [stats, setStats] = useState<StatsData | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("/api/stats").then((r) => r.json()).then(setStats);
+    fetch("/api/stats")
+      .then((r) => {
+        if (!r.ok) throw new Error("Failed to load stats");
+        return r.json();
+      })
+      .then(setStats)
+      .catch((e: Error) => setError(e.message));
   }, []);
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="text-red-400">{error}</p>
+      </div>
+    );
+  }
 
   if (!stats) {
     return (
