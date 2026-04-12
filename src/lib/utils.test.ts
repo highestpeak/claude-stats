@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { calcStreaks, decodeProjectName, topWords, calcCacheSavings, formatNumber } from './utils';
+import { calcStreaks, decodeProjectName, topWords, calcCacheSavings, formatNumber, groupIntoWindows } from './utils';
 
 describe('calcStreaks', () => {
   it('returns zeros for empty input', () => {
@@ -76,5 +76,79 @@ describe('calcCacheSavings', () => {
   });
   it('returns 0 for unknown model', () => {
     expect(calcCacheSavings({ 'unknown-model': { cacheReadInputTokens: 1_000_000 } })).toBe(0);
+  });
+});
+
+const msg = (timestamp: string, tokens = 100) => ({
+  timestamp,
+  inputTokens: tokens,
+  outputTokens: 0,
+  cacheReadTokens: 0,
+  cacheCreationTokens: 0,
+});
+
+describe('groupIntoWindows', () => {
+  it('returns empty array for empty input', () => {
+    expect(groupIntoWindows([])).toEqual([]);
+  });
+
+  it('puts all messages within 5h into one window', () => {
+    const result = groupIntoWindows([
+      msg('2026-01-01T00:00:00Z', 100),
+      msg('2026-01-01T04:59:59Z', 200),
+    ]);
+    expect(result).toHaveLength(1);
+    expect(result[0].requestCount).toBe(2);
+    expect(result[0].totalTokens).toBe(300);
+  });
+
+  it('splits into two windows when gap is exactly 5h', () => {
+    const result = groupIntoWindows([
+      msg('2026-01-01T00:00:00Z', 100),
+      msg('2026-01-01T05:00:00Z', 200),
+    ]);
+    expect(result).toHaveLength(2);
+    expect(result[0].totalTokens).toBe(100);
+    expect(result[1].totalTokens).toBe(200);
+  });
+
+  it('sorts messages before grouping (order-independent input)', () => {
+    const result = groupIntoWindows([
+      msg('2026-01-01T04:00:00Z', 200),
+      msg('2026-01-01T00:00:00Z', 100),
+    ]);
+    expect(result).toHaveLength(1);
+    expect(result[0].startTime).toBe('2026-01-01T00:00:00.000Z');
+    expect(result[0].timeline[0].cumulativeTokens).toBe(100);
+    expect(result[0].timeline[1].cumulativeTokens).toBe(300);
+  });
+
+  it('sets window endTime to startTime + 5h', () => {
+    const result = groupIntoWindows([msg('2026-01-01T10:00:00Z')]);
+    expect(result[0].endTime).toBe('2026-01-01T15:00:00.000Z');
+  });
+
+  it('computes minutesFromStart correctly', () => {
+    const result = groupIntoWindows([
+      msg('2026-01-01T00:00:00Z'),
+      msg('2026-01-01T01:30:00Z'),
+    ]);
+    expect(result[0].timeline[0].minutesFromStart).toBe(0);
+    expect(result[0].timeline[1].minutesFromStart).toBe(90);
+  });
+
+  it('sums all token types into totalTokens', () => {
+    const result = groupIntoWindows([{
+      timestamp: '2026-01-01T00:00:00Z',
+      inputTokens: 10,
+      outputTokens: 20,
+      cacheReadTokens: 30,
+      cacheCreationTokens: 40,
+    }]);
+    expect(result[0].totalTokens).toBe(100);
+    expect(result[0].inputTokens).toBe(10);
+    expect(result[0].outputTokens).toBe(20);
+    expect(result[0].cacheReadTokens).toBe(30);
+    expect(result[0].cacheCreationTokens).toBe(40);
   });
 });

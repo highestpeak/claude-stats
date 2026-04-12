@@ -1,3 +1,5 @@
+import type { UsageWindow, WindowTimelinePoint } from './types';
+
 // Token prices in USD per 1M tokens
 export const TOKEN_PRICES: Record<string, {
   input: number; output: number; cacheRead: number; cacheCreation: number;
@@ -101,4 +103,77 @@ export function formatNumber(n: number): string {
 
 export function formatCurrency(usd: number): string {
   return '$' + usd.toFixed(2);
+}
+
+export interface RawUsageMessage {
+  timestamp: string;
+  inputTokens: number;
+  outputTokens: number;
+  cacheReadTokens: number;
+  cacheCreationTokens: number;
+}
+
+const FIVE_HOURS_MS = 5 * 60 * 60 * 1000;
+
+function buildUsageWindow(messages: RawUsageMessage[], windowStart: Date): UsageWindow {
+  let inputTokens = 0, outputTokens = 0, cacheReadTokens = 0, cacheCreationTokens = 0;
+  let cumulative = 0;
+
+  const timeline: WindowTimelinePoint[] = messages.map((msg) => {
+    const tokens =
+      msg.inputTokens + msg.outputTokens + msg.cacheReadTokens + msg.cacheCreationTokens;
+    inputTokens += msg.inputTokens;
+    outputTokens += msg.outputTokens;
+    cacheReadTokens += msg.cacheReadTokens;
+    cacheCreationTokens += msg.cacheCreationTokens;
+    cumulative += tokens;
+    return {
+      timestamp: msg.timestamp,
+      minutesFromStart: Math.round(
+        (new Date(msg.timestamp).getTime() - windowStart.getTime()) / 60_000
+      ),
+      tokens,
+      cumulativeTokens: cumulative,
+    };
+  });
+
+  return {
+    id: windowStart.toISOString(),
+    startTime: windowStart.toISOString(),
+    endTime: new Date(windowStart.getTime() + FIVE_HOURS_MS).toISOString(),
+    inputTokens,
+    outputTokens,
+    cacheReadTokens,
+    cacheCreationTokens,
+    totalTokens: inputTokens + outputTokens + cacheReadTokens + cacheCreationTokens,
+    requestCount: messages.length,
+    timeline,
+  };
+}
+
+export function groupIntoWindows(messages: RawUsageMessage[]): UsageWindow[] {
+  if (messages.length === 0) return [];
+  const sorted = [...messages].sort(
+    (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+  );
+
+  const windows: UsageWindow[] = [];
+  let windowStart = new Date(sorted[0].timestamp);
+  let bucket: RawUsageMessage[] = [];
+
+  for (const msg of sorted) {
+    const t = new Date(msg.timestamp).getTime();
+    if (t - windowStart.getTime() >= FIVE_HOURS_MS) {
+      windows.push(buildUsageWindow(bucket, windowStart));
+      windowStart = new Date(msg.timestamp);
+      bucket = [];
+    }
+    bucket.push(msg);
+  }
+
+  if (bucket.length > 0) {
+    windows.push(buildUsageWindow(bucket, windowStart));
+  }
+
+  return windows;
 }
