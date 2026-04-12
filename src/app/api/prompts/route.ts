@@ -3,17 +3,9 @@ import fs from "fs";
 import path from "path";
 import os from "os";
 import type { PromptEntry } from "@/lib/types";
+import { decodeProjectName } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
-
-function decodeProjectName(dirName: string, homeDir: string): string {
-  const encodedHome = homeDir.replace(/\//g, "-");
-  if (dirName.startsWith(encodedHome)) {
-    const rest = dirName.slice(encodedHome.length).replace(/^-/, "");
-    return rest || dirName;
-  }
-  return dirName.replace(/^-/, "");
-}
 
 function extractText(content: unknown): string {
   if (typeof content === "string") return content;
