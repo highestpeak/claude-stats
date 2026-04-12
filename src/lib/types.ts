@@ -19,6 +19,14 @@ export interface PromptEntry {
   outputTokens: number;
 }
 
+export interface RawUsageMessage {
+  timestamp: string;
+  inputTokens: number;
+  outputTokens: number;
+  cacheReadTokens: number;
+  cacheCreationTokens: number;
+}
+
 export interface WindowTimelinePoint {
   timestamp: string;         // ISO 8601
   minutesFromStart: number;  // rounded to nearest minute

@@ -1,4 +1,4 @@
-import type { UsageWindow, WindowTimelinePoint } from './types';
+import type { UsageWindow, WindowTimelinePoint, RawUsageMessage } from './types';
 
 // Token prices in USD per 1M tokens
 export const TOKEN_PRICES: Record<string, {
@@ -105,14 +105,7 @@ export function formatCurrency(usd: number): string {
   return '$' + usd.toFixed(2);
 }
 
-export interface RawUsageMessage {
-  timestamp: string;
-  inputTokens: number;
-  outputTokens: number;
-  cacheReadTokens: number;
-  cacheCreationTokens: number;
-}
-
+// >= this threshold means a new rate-limit window starts (a request at exactly +5h is already outside the prior window)
 const FIVE_HOURS_MS = 5 * 60 * 60 * 1000;
 
 function buildUsageWindow(messages: RawUsageMessage[], windowStart: Date): UsageWindow {
