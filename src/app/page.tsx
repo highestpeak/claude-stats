@@ -7,6 +7,7 @@ import HourlyChart from "@/components/HourlyChart";
 import TokensOverTime from "@/components/TokensOverTime";
 import ModelDistribution from "@/components/ModelDistribution";
 import DeveloperMetrics from "@/components/DeveloperMetrics";
+import WeeklyHeatmap from "@/components/WeeklyHeatmap";
 
 interface StatsData {
   totalSessions: number;
@@ -94,6 +95,11 @@ export default function Home() {
           <HourlyChart hourCounts={stats.hourCounts} />
           <ModelDistribution modelUsage={stats.modelUsage} />
         </div>
+
+        <WeeklyHeatmap
+          dailyActivity={stats.dailyActivity}
+          hourCounts={stats.hourCounts}
+        />
 
         <TokensOverTime dailyModelTokens={stats.dailyModelTokens} />
 

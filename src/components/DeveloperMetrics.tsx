@@ -1,4 +1,5 @@
 "use client";
+import { calcStreaks, formatNumber } from "@/lib/utils";
 
 interface ModelUsage {
   inputTokens: number;
@@ -22,12 +23,6 @@ interface Props {
   dailyActivity: DailyActivity[];
 }
 
-function formatNumber(n: number): string {
-  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + "M";
-  if (n >= 1_000) return (n / 1_000).toFixed(1) + "K";
-  return n.toLocaleString();
-}
-
 export default function DeveloperMetrics({ totalSessions, totalMessages, modelUsage, dailyActivity }: Props) {
   const totalOutput = Object.values(modelUsage).reduce((s, m) => s + m.outputTokens, 0);
   const linesOfCode = Math.round(totalOutput / 150);
@@ -35,19 +30,22 @@ export default function DeveloperMetrics({ totalSessions, totalMessages, modelUs
   const activeDays = dailyActivity.length;
   const avgMessages = totalSessions > 0 ? Math.round(totalMessages / totalSessions) : 0;
   const totalToolCalls = dailyActivity.reduce((s, d) => s + d.toolCallCount, 0);
+  const { current: currentStreak, longest: longestStreak } = calcStreaks(dailyActivity.map((d) => d.date));
 
   const metrics = [
     { label: "Equivalent Lines of Code", value: formatNumber(linesOfCode) },
-    { label: "Equivalent Dev-Days", value: devDays.toFixed(1) },
-    { label: "Active Coding Days", value: String(activeDays) },
-    { label: "Avg Messages / Session", value: String(avgMessages) },
-    { label: "Total Tool Calls", value: formatNumber(totalToolCalls) },
+    { label: "Equivalent Dev-Days",      value: devDays.toFixed(1)        },
+    { label: "Active Coding Days",       value: String(activeDays)         },
+    { label: "Avg Messages / Session",   value: String(avgMessages)        },
+    { label: "Total Tool Calls",         value: formatNumber(totalToolCalls) },
+    { label: "Current Streak",           value: `${currentStreak} days`   },
+    { label: "Longest Streak",           value: `${longestStreak} days`   },
   ];
 
   return (
     <div className="bg-card border border-border rounded-lg p-5">
       <h3 className="text-textPrimary font-semibold mb-4">Developer Metrics</h3>
-      <div className="space-y-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
         {metrics.map((m) => (
           <div key={m.label}>
             <p className="text-textSecondary text-sm">{m.label}</p>
