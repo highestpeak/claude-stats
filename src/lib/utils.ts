@@ -22,7 +22,7 @@ export function decodeProjectName(dirName: string, homeDir: string): string {
 /** Calculate current and longest active-day streaks from an array of date strings (YYYY-MM-DD). */
 export function calcStreaks(dates: string[]): { current: number; longest: number } {
   if (dates.length === 0) return { current: 0, longest: 0 };
-  const sorted = [...new Set(dates)].sort();
+  const sorted = Array.from(new Set(dates)).sort();
   let longest = 1;
   let run = 1;
 
