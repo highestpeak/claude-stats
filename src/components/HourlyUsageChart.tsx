@@ -10,7 +10,7 @@ export default function HourlyUsageChart({ data }: { data: HourlyAggregate[] }) 
 
   const chartData = data.map((d) => ({
     // "2026-04-12T10:00:00.000Z" → "04-12 10:00"
-    label: d.hour.slice(5, 13).replace("T", " "),
+    label: d.hour.slice(5, 16).replace("T", " "),
     tokens: d.tokens,
   }));
 
