@@ -1,0 +1,6 @@
+{"type":"server-started","port":54508,"host":"127.0.0.1","url_host":"localhost","url":"http://localhost:54508","screen_dir":"/Users/zhangjike/code/my-code/claude-stats/.superpowers/brainstorm/40403-1775989820/content","state_dir":"/Users/zhangjike/code/my-code/claude-stats/.superpowers/brainstorm/40403-1775989820/state"}
+{"type":"screen-added","file":"/Users/zhangjike/code/my-code/claude-stats/.superpowers/brainstorm/40403-1775989820/content/sharing-usecase.html"}
+{"source":"user-event","type":"click","text":"A\n    \n      截图 / 导出图片\n      截图发给朋友，或导出为 PNG/PDF。不需要对方有访问权限，简单直接。","choice":"a","id":null,"timestamp":1775989982097}
+{"type":"screen-added","file":"/Users/zhangjike/code/my-code/claude-stats/.superpowers/brainstorm/40403-1775989820/content/waiting.html"}
+{"type":"screen-added","file":"/Users/zhangjike/code/my-code/claude-stats/.superpowers/brainstorm/40403-1775989820/content/approaches.html"}
+{"type":"server-stopped","reason":"idle timeout"}

@@ -1,0 +1,40 @@
+<h2>三种架构方案</h2>
+<p class="subtitle">核心问题：如何组织新增的 Token 详情、项目分布、Prompt 历史这三大板块</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>单页滚动 + 折叠区块</h3>
+      <p>保持现有单页结构，新增内容作为可折叠 section 插入。无导航切换。</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>优点</h4><ul><li>改动最小</li><li>一屏滚到底截图</li></ul></div>
+        <div class="cons"><h4>缺点</h4><ul><li>页面极长，Prompt 列表体验差</li><li>项目分布和历史挤在一起</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>⭐ 多页 + 顶部 Tab 导航（推荐）</h3>
+      <p>4 个独立页面：Overview / Tokens / Projects / Prompts。顶部 tab 切换，每页专注一个主题。</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>优点</h4><ul><li>每页专注，截图干净</li><li>Prompts 页有足够空间做搜索/过滤</li><li>扩展性强，以后加新页面很容易</li></ul></div>
+        <div class="cons"><h4>缺点</h4><ul><li>需要加路由（Next.js 已有，成本低）</li><li>分享时需要分别截图各页</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>侧边栏导航 + 主内容区</h3>
+      <p>左侧固定导航栏，右侧内容区切换页面。类似 VSCode / Linear 风格。</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>优点</h4><ul><li>导航始终可见，专业感强</li><li>适合未来功能增多</li></ul></div>
+        <div class="cons"><h4>缺点</h4><ul><li>侧边栏占宽度，图表空间减少</li><li>移动端体验需要额外处理</li><li>截图时侧边栏总在</li></ul></div>
+      </div>
+    </div>
+  </div>
+</div>
