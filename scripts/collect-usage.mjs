@@ -81,8 +81,9 @@ function groupIntoWindows(messages) {
 }
 
 function truncateToHour(isoString) {
-  // "2026-04-12T10:27:03.846Z" → "2026-04-12T10:00:00.000Z"
-  return isoString.slice(0, 13) + ':00:00.000Z';
+  const d = new Date(isoString);
+  d.setUTCMinutes(0, 0, 0);
+  return d.toISOString();
 }
 
 function getWeekStart(isoString) {
@@ -200,7 +201,12 @@ const cache = {
   weeklyAggregates,
 };
 
-writeFileSync(OUTPUT_FILE, JSON.stringify(cache, null, 2));
+try {
+  writeFileSync(OUTPUT_FILE, JSON.stringify(cache, null, 2));
+} catch (err) {
+  console.error(`[collect-usage] Failed to write cache: ${err.message}`);
+  process.exit(1);
+}
 console.log(
   `[collect-usage] ${windows.length} windows, ${messages.length} requests → ${OUTPUT_FILE}`
 );
