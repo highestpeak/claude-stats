@@ -13,8 +13,8 @@ export default function ProjectTable({ projects }: { projects: ProjectStats[] })
               <th className="text-left p-3 text-textSecondary font-medium">Project</th>
               <th className="text-right p-3 text-textSecondary font-medium">Messages</th>
               <th className="text-right p-3 text-textSecondary font-medium">Total Tokens</th>
-              <th className="text-right p-3 text-textSecondary font-medium">Output</th>
-              <th className="text-right p-3 text-textSecondary font-medium">Cache</th>
+              <th className="text-right p-3 text-textSecondary font-medium">No Cache</th>
+              <th className="text-right p-3 text-textSecondary font-medium">Cache Hit</th>
               <th className="text-right p-3 text-textSecondary font-medium">Active Days</th>
               <th className="text-right p-3 text-textSecondary font-medium">Last Active</th>
             </tr>
@@ -22,8 +22,10 @@ export default function ProjectTable({ projects }: { projects: ProjectStats[] })
           <tbody>
             {projects.map((p) => {
               const total = p.inputTokens + p.outputTokens + p.cacheReadTokens + p.cacheCreationTokens;
-              const cacheTotal = p.cacheReadTokens + p.cacheCreationTokens;
-              const cachePct = total > 0 ? Math.round((cacheTotal / total) * 100) : 0;
+              const noCache = p.inputTokens + p.outputTokens;
+              // Cache hit rate: cache_read / (input + cache_read) — what % of input was served from cache
+              const cacheHitDenom = p.inputTokens + p.cacheReadTokens;
+              const cacheHitPct = cacheHitDenom > 0 ? ((p.cacheReadTokens / cacheHitDenom) * 100).toFixed(1) : '0';
               return (
                 <tr key={p.id} className="border-b border-border hover:bg-bg transition-colors">
                   <td className="p-3 text-textPrimary max-w-xs">
@@ -35,14 +37,13 @@ export default function ProjectTable({ projects }: { projects: ProjectStats[] })
                   >
                     {formatNumber(total)}
                   </td>
-                  <td className="p-3 text-right tabular-nums text-textSecondary">
-                    {formatNumber(p.outputTokens)}
+                  <td className="p-3 text-right tabular-nums text-textSecondary"
+                    title={`Input: ${formatNumber(p.inputTokens)}\nOutput: ${formatNumber(p.outputTokens)}`}
+                  >
+                    {formatNumber(noCache)}
                   </td>
                   <td className="p-3 text-right tabular-nums text-textSecondary">
-                    <span title={`Read: ${formatNumber(p.cacheReadTokens)} · Create: ${formatNumber(p.cacheCreationTokens)}`}>
-                      {formatNumber(cacheTotal)}
-                      <span className="text-xs ml-1 text-green-500">{cachePct}%</span>
-                    </span>
+                    <span className="text-green-500">{cacheHitPct}%</span>
                   </td>
                   <td className="p-3 text-right tabular-nums">{p.activeDays}</td>
                   <td className="p-3 text-right text-textSecondary">{p.lastDate.slice(0, 10)}</td>
