@@ -9,6 +9,7 @@ const EXCLUDED_WORDS_KEY = "claude-stats-excluded-words";
 export default function PromptAnalysis({ prompts }: { prompts: PromptEntry[] }) {
   const [analysis, setAnalysis] = useState<string | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
+  const [userPrompt, setUserPrompt] = useState("");
   const [excludedWords, setExcludedWords] = useState<Set<string>>(() => {
     if (typeof window === "undefined") return new Set();
     try {
@@ -42,6 +43,7 @@ export default function PromptAnalysis({ prompts }: { prompts: PromptEntry[] }) 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           topWords: filteredWords.map(w => w.word),
+          userPrompt: userPrompt.trim() || undefined,
         }),
       });
       const data = await res.json();
@@ -97,10 +99,17 @@ export default function PromptAnalysis({ prompts }: { prompts: PromptEntry[] }) 
             className="text-xs text-blue-400 hover:text-blue-300 mt-2"
           >Reset excluded ({excludedWords.size})</button>
         )}
+        <textarea
+          value={userPrompt}
+          onChange={(e) => setUserPrompt(e.target.value)}
+          placeholder="分析引导（可选）：例如 &quot;哪些 prompt 模式应该写入 CLAUDE.md&quot;"
+          className="w-full mt-4 px-3 py-2 rounded bg-bg border border-border text-sm text-textPrimary placeholder-textSecondary focus:outline-none focus:border-blue-500 resize-none"
+          rows={2}
+        />
         <button
           onClick={runAnalysis}
           disabled={analyzing}
-          className="w-full mt-4 px-4 py-2 rounded bg-blue-600 hover:bg-blue-700 text-white text-sm disabled:opacity-50 transition-colors"
+          className="w-full mt-2 px-4 py-2 rounded bg-blue-600 hover:bg-blue-700 text-white text-sm disabled:opacity-50 transition-colors"
         >
           {analyzing ? 'Analyzing...' : 'AI Analysis'}
         </button>
