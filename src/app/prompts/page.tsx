@@ -1,9 +1,11 @@
 "use client";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import PromptList from "@/components/PromptList";
 import PromptAnalysis from "@/components/PromptAnalysis";
-import type { PromptEntry } from "@/lib/types";
+import type { PromptEntry, PaginationInfo } from "@/lib/types";
 import ExportButton from "@/components/ExportButton";
+
+const PAGE_SIZE = 50;
 
 export default function PromptsPage() {
   const [prompts, setPrompts]             = useState<PromptEntry[]>([]);
@@ -11,48 +13,57 @@ export default function PromptsPage() {
   const [error, setError]                 = useState<string | null>(null);
   const [search, setSearch]               = useState("");
   const [projectFilter, setProjectFilter] = useState("");
+  const [page, setPage]                   = useState(1);
+  const [pagination, setPagination]       = useState<PaginationInfo | null>(null);
+  const [projects, setProjects]           = useState<{ id: string; name: string }[]>([]);
 
+  // Debounce search input
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const handleSearchChange = useCallback((value: string) => {
+    setSearch(value);
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => setDebouncedSearch(value), 300);
+  }, []);
+
+  // Reset page when filters change
+  useEffect(() => { setPage(1); }, [debouncedSearch, projectFilter]);
+
+  // Fetch projects for dropdown (once)
   useEffect(() => {
-    fetch("/api/prompts")
+    fetch("/api/projects?pageSize=100")
+      .then((r) => r.json())
+      .then((data) => {
+        const list = (data.data || []) as { id: string; displayName: string }[];
+        setProjects(list.map((p) => ({ id: p.id, name: p.displayName })));
+      })
+      .catch(() => {});
+  }, []);
+
+  // Fetch prompts with server-side pagination + filters
+  useEffect(() => {
+    setLoading(true);
+    const params = new URLSearchParams();
+    params.set("page", String(page));
+    params.set("pageSize", String(PAGE_SIZE));
+    if (debouncedSearch) params.set("search", debouncedSearch);
+    if (projectFilter) params.set("project", projectFilter);
+
+    fetch(`/api/prompts?${params}`)
       .then((r) => {
         if (!r.ok) throw new Error("Failed to load prompts");
         return r.json();
       })
       .then((data) => {
-        setPrompts(Array.isArray(data) ? data : []);
+        setPrompts(data.data || []);
+        setPagination(data.pagination || null);
         setLoading(false);
       })
       .catch((e: Error) => {
         setError(e.message);
         setLoading(false);
       });
-  }, []);
-
-  const projects = useMemo(() => {
-    const seen = new Map<string, string>();
-    for (const p of prompts) {
-      if (!seen.has(p.projectId)) seen.set(p.projectId, p.projectName);
-    }
-    return Array.from(seen.entries()).map(([id, name]) => ({ id, name }));
-  }, [prompts]);
-
-  const filtered = useMemo(
-    () =>
-      prompts.filter((p) => {
-        if (projectFilter && p.projectId !== projectFilter) return false;
-        if (search && !p.content.toLowerCase().includes(search.toLowerCase())) return false;
-        return true;
-      }),
-    [prompts, search, projectFilter]
-  );
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p className="text-textSecondary">Loading prompts...</p>
-      </div>
-    );
-  }
+  }, [page, debouncedSearch, projectFilter]);
 
   if (error) {
     return (
@@ -74,7 +85,7 @@ export default function PromptsPage() {
           className="bg-card border border-border rounded-lg px-3 py-2 text-sm text-textPrimary placeholder-textSecondary focus:outline-none focus:border-blue-500 flex-1 min-w-48"
           placeholder="Search prompts…"
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => handleSearchChange(e.target.value)}
         />
         <select
           className="bg-card border border-border rounded-lg px-3 py-2 text-sm text-textPrimary focus:outline-none focus:border-blue-500"
@@ -90,7 +101,32 @@ export default function PromptsPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
-          <PromptList prompts={filtered} />
+          {loading ? (
+            <div className="bg-card border border-border rounded-lg p-8 text-center">
+              <p className="text-textSecondary">Loading prompts...</p>
+            </div>
+          ) : (
+            <>
+              <PromptList prompts={prompts} total={pagination?.total} />
+              {pagination && pagination.totalPages > 1 && (
+                <div className="flex items-center justify-center gap-4 mt-4">
+                  <button
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    disabled={page <= 1}
+                    className="px-3 py-1 text-sm rounded border border-border text-textSecondary hover:text-textPrimary disabled:opacity-30"
+                  >Prev</button>
+                  <span className="text-sm text-textSecondary">
+                    Page {pagination.page} of {pagination.totalPages} ({pagination.total.toLocaleString()} total)
+                  </span>
+                  <button
+                    onClick={() => setPage((p) => Math.min(pagination.totalPages, p + 1))}
+                    disabled={page >= pagination.totalPages}
+                    className="px-3 py-1 text-sm rounded border border-border text-textSecondary hover:text-textPrimary disabled:opacity-30"
+                  >Next</button>
+                </div>
+              )}
+            </>
+          )}
         </div>
         <div>
           <PromptAnalysis prompts={prompts} />

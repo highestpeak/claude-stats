@@ -3,7 +3,7 @@ import { useState } from "react";
 import type { PromptEntry } from "@/lib/types";
 import { formatNumber } from "@/lib/utils";
 
-export default function PromptList({ prompts }: { prompts: PromptEntry[] }) {
+export default function PromptList({ prompts, total }: { prompts: PromptEntry[]; total?: number }) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   const toggle = (id: string) =>
@@ -16,7 +16,7 @@ export default function PromptList({ prompts }: { prompts: PromptEntry[] }) {
   return (
     <div className="bg-card border border-border rounded-lg overflow-hidden">
       <div className="p-3 border-b border-border text-textSecondary text-sm">
-        {prompts.length.toLocaleString()} prompts
+        {(total ?? prompts.length).toLocaleString()} prompts
       </div>
       <div className="divide-y divide-border max-h-[640px] overflow-y-auto">
         {prompts.map((p) => (
