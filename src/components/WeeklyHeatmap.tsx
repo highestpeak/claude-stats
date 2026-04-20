@@ -1,5 +1,7 @@
 "use client";
 
+import { useMemo, useState, useCallback, type MouseEvent } from "react";
+
 interface DailyActivity {
   date: string;
   messageCount: number;
@@ -10,67 +12,171 @@ interface Props {
   hourCounts: Record<string, number>;
 }
 
-const DAYS  = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+// Calendar order: Mon–Sun
+const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+// Map JS getDay() (0=Sun..6=Sat) to our column index (0=Mon..6=Sun)
+const JS_DOW_TO_COL = [6, 0, 1, 2, 3, 4, 5];
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 
+const RANGES = ['7d', '30d', '90d', 'all'] as const;
+type Range = (typeof RANGES)[number];
+
+const RANGE_LABELS: Record<Range, string> = {
+  '7d': '7 Days',
+  '30d': '30 Days',
+  '90d': '90 Days',
+  all: 'All',
+};
+
 function heatColor(intensity: number): string {
-  if (intensity === 0)    return '#161b22';
-  if (intensity < 0.2)    return '#0e4429';
-  if (intensity < 0.4)    return '#006d32';
-  if (intensity < 0.65)   return '#26a641';
+  if (intensity === 0) return '#161b22';
+  if (intensity < 0.2) return '#0e4429';
+  if (intensity < 0.4) return '#006d32';
+  if (intensity < 0.65) return '#26a641';
   return '#39d353';
 }
 
-export default function WeeklyHeatmap({ dailyActivity, hourCounts }: Props) {
-  // Accumulate message counts per day-of-week
-  const dayTotals = new Array<number>(7).fill(0);
-  for (const d of dailyActivity) {
-    const dow = new Date(d.date + 'T12:00:00').getDay();
-    dayTotals[dow] += d.messageCount;
-  }
-  const totalDayMsgs = dayTotals.reduce((s, v) => s + v, 0) || 1;
-  const totalHourMsgs = Object.values(hourCounts).reduce((s, v) => s + v, 0) || 1;
+function activityLabel(intensity: number): string {
+  if (intensity === 0) return 'No activity';
+  if (intensity < 0.2) return 'Low activity';
+  if (intensity < 0.65) return 'Medium activity';
+  return 'High activity';
+}
 
-  // Compute max joint probability for normalization
-  let maxCell = 0;
-  for (let dow = 0; dow < 7; dow++) {
-    for (const h of HOURS) {
-      const val = (dayTotals[dow] / totalDayMsgs) * ((hourCounts[String(h)] ?? 0) / totalHourMsgs);
-      if (val > maxCell) maxCell = val;
+export default function WeeklyHeatmap({ dailyActivity, hourCounts }: Props) {
+  const [range, setRange] = useState<Range>('all');
+  const [tooltip, setTooltip] = useState<{ x: number; y: number; text: string } | null>(null);
+
+  const { grid, maxCell } = useMemo(() => {
+    // Filter dailyActivity by range
+    const now = Date.now();
+    const cutoff: Record<Range, number> = {
+      '7d': now - 7 * 86400_000,
+      '30d': now - 30 * 86400_000,
+      '90d': now - 90 * 86400_000,
+      all: 0,
+    };
+    const threshold = cutoff[range];
+    const filtered = threshold
+      ? dailyActivity.filter((d) => new Date(d.date + 'T12:00:00').getTime() >= threshold)
+      : dailyActivity;
+
+    // Accumulate message counts per day-of-week (mapped to Mon=0..Sun=6)
+    const dayTotals = new Array<number>(7).fill(0);
+    for (const d of filtered) {
+      const jsDow = new Date(d.date + 'T12:00:00').getDay();
+      dayTotals[JS_DOW_TO_COL[jsDow]] += d.messageCount;
     }
-  }
-  if (maxCell === 0) maxCell = 1;
+
+    const totalDayMsgs = dayTotals.reduce((s, v) => s + v, 0) || 1;
+    const totalHourMsgs = Object.values(hourCounts).reduce((s, v) => s + v, 0) || 1;
+
+    // Build grid[hour][dayCol] with joint probability
+    let mx = 0;
+    const g: number[][] = [];
+    for (const h of HOURS) {
+      const row: number[] = [];
+      for (let col = 0; col < 7; col++) {
+        const val =
+          (dayTotals[col] / totalDayMsgs) *
+          ((hourCounts[String(h)] ?? 0) / totalHourMsgs);
+        if (val > mx) mx = val;
+        row.push(val);
+      }
+      g.push(row);
+    }
+    return { grid: g, maxCell: mx || 1 };
+  }, [dailyActivity, hourCounts, range]);
+
+  const handleMouseEnter = useCallback(
+    (e: MouseEvent<HTMLDivElement>, hour: number, col: number, intensity: number) => {
+      const container = (e.currentTarget as HTMLDivElement).closest(
+        '.weekly-heatmap-container',
+      ) as HTMLElement | null;
+      if (!container) return;
+      const rect = container.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top - 10;
+      const dayName = DAYS[col];
+      const text = `${dayName} ${hour}:00 \u2014 ${activityLabel(intensity)}`;
+      setTooltip({ x, y, text });
+    },
+    [],
+  );
+
+  const handleMouseLeave = useCallback(() => setTooltip(null), []);
 
   return (
     <div className="bg-card border border-border rounded-lg p-5">
       <h3 className="text-textPrimary font-semibold mb-4">Activity by Day &amp; Hour</h3>
-      <div className="overflow-x-auto">
-        {/* Hour labels */}
+
+      {/* Time range selector */}
+      <div className="flex gap-1 mb-4">
+        {RANGES.map((r) => (
+          <button
+            key={r}
+            onClick={() => setRange(r)}
+            className={`px-3 py-1 text-xs rounded ${
+              range === r
+                ? 'bg-blue-600 text-white'
+                : 'text-textSecondary hover:text-textPrimary'
+            }`}
+          >
+            {RANGE_LABELS[r]}
+          </button>
+        ))}
+      </div>
+
+      <div className="weekly-heatmap-container overflow-x-auto relative">
+        {/* Day labels (top) */}
         <div className="flex gap-1 mb-1 ml-10">
-          {HOURS.map((h) => (
-            <div key={h} className="w-5 text-center text-textSecondary" style={{ fontSize: 9 }}>
-              {h % 6 === 0 ? h : ''}
+          {DAYS.map((day) => (
+            <div
+              key={day}
+              className="w-5 text-center text-textSecondary"
+              style={{ fontSize: 10 }}
+            >
+              {day.charAt(0)}
             </div>
           ))}
         </div>
-        {DAYS.map((day, dow) => (
-          <div key={day} className="flex items-center gap-1 mb-1">
-            <span className="text-xs text-textSecondary w-9 shrink-0">{day}</span>
-            {HOURS.map((h) => {
-              const raw = (dayTotals[dow] / totalDayMsgs) * ((hourCounts[String(h)] ?? 0) / totalHourMsgs);
+
+        {/* Rows = hours, Cols = days */}
+        {HOURS.map((h) => (
+          <div key={h} className="flex items-center gap-1 mb-1">
+            <span className="text-xs text-textSecondary w-9 shrink-0 text-right pr-1">
+              {h % 3 === 0 ? `${h}:00` : ''}
+            </span>
+            {DAYS.map((_, col) => {
+              const raw = grid[h][col];
+              const intensity = raw / maxCell;
               return (
                 <div
-                  key={h}
-                  className="w-5 h-5 rounded-sm"
-                  style={{ backgroundColor: heatColor(raw / maxCell) }}
-                  title={`${day} ${h}:00`}
+                  key={col}
+                  className="w-5 h-5 rounded-sm cursor-default"
+                  style={{ backgroundColor: heatColor(intensity) }}
+                  onMouseEnter={(e) => handleMouseEnter(e, h, col, intensity)}
+                  onMouseLeave={handleMouseLeave}
                 />
               );
             })}
           </div>
         ))}
+
+        {/* Tooltip */}
+        {tooltip && (
+          <div
+            className="absolute bg-[#161b22] border border-[#30363d] text-[#e6edf3] text-xs px-2 py-1 rounded shadow-lg pointer-events-none whitespace-pre-line z-50"
+            style={{
+              left: tooltip.x,
+              top: tooltip.y,
+              transform: 'translate(-50%, -100%)',
+            }}
+          >
+            {tooltip.text}
+          </div>
+        )}
       </div>
-      <p className="text-textSecondary text-xs mt-3">Approximate — derived from day-of-week and hour distributions independently</p>
     </div>
   );
 }
