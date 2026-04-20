@@ -13,6 +13,7 @@ import { formatNumber } from "@/lib/utils";
 import WindowBurndownChart from "@/components/WindowBurndownChart";
 import HourlyUsageChart from "@/components/HourlyUsageChart";
 import WeeklyUsageChart from "@/components/WeeklyUsageChart";
+import CurrentStatus from "@/components/CurrentStatus";
 import ExportButton from "@/components/ExportButton";
 
 interface AveragePoint {
@@ -28,6 +29,15 @@ interface UsageResponse {
   hourlyAggregates: HourlyAggregate[];
   weeklyAggregates: WeeklyAggregate[];
   averagePattern: AveragePoint[];
+  currentStatus: {
+    latestWindow: UsageWindowRow | null;
+    peakWindowTokens: number;
+    weeklyTokens: number;
+    weeklyRequests: number;
+    weeklyWindows: number;
+    peakWeeklyTokens: number;
+    rateLimitHits: number;
+  };
 }
 
 const WINDOWS_PAGE_SIZE = 20;
@@ -60,6 +70,8 @@ export default function UsagePage() {
   const [hourly, setHourly]                 = useState<HourlyAggregate[]>([]);
   const [weekly, setWeekly]                 = useState<WeeklyAggregate[]>([]);
   const [averagePattern, setAveragePattern] = useState<AveragePoint[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [currentStatus, setCurrentStatus]   = useState<any>(null);
   const [error, setError]                   = useState<string | null>(null);
   const [loading, setLoading]               = useState(true);
 
@@ -85,6 +97,7 @@ export default function UsagePage() {
         setHourly(data.hourlyAggregates || []);
         setWeekly(data.weeklyAggregates || []);
         setAveragePattern(data.averagePattern || []);
+        setCurrentStatus(data.currentStatus || null);
         setLoading(false);
         // Auto-select first window if none selected
         if (data.windows.data?.length > 0 && selectedWindowId === null) {
@@ -164,6 +177,9 @@ export default function UsagePage() {
         <h1 className="text-lg font-semibold text-textPrimary">Claude Code Usage</h1>
         <ExportButton targetId="usage-page" filename={filename} />
       </div>
+
+      {/* Current Status */}
+      {currentStatus && <CurrentStatus data={currentStatus} />}
 
       {/* Overview cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

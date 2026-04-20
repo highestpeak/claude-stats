@@ -63,11 +63,51 @@ export async function GET(request: NextRequest) {
       )
       .all() as { minute: number; avgPct: number }[];
 
+    // Current status: latest window + weekly summary
+    const latestWindow = db.prepare(
+      `SELECT * FROM usage_windows ORDER BY start_time DESC LIMIT 1`
+    ).get() as UsageWindowRow | undefined;
+
+    const peakWindowTokens = (db.prepare(
+      `SELECT MAX(total_tokens) as peak FROM usage_windows`
+    ).get() as { peak: number | null })?.peak ?? 0;
+
+    // Weekly: last 7 days from now
+    const weeklyStats = db.prepare(
+      `SELECT SUM(total_tokens) as tokens, SUM(request_count) as requests, COUNT(*) as windows
+       FROM usage_windows WHERE start_time >= datetime('now', '-7 days')`
+    ).get() as { tokens: number | null; requests: number | null; windows: number };
+
+    // Peak weekly (group by ISO week, find max)
+    const peakWeeklyTokens = (db.prepare(
+      `SELECT MAX(wk_tokens) as peak FROM (
+        SELECT SUM(total_tokens) as wk_tokens
+        FROM usage_windows
+        GROUP BY strftime('%Y-%W', start_time)
+      )`
+    ).get() as { peak: number | null })?.peak ?? 0;
+
+    // Rate limit hits count (from messages with rate limit errors)
+    const rateLimitHits = (db.prepare(
+      `SELECT COUNT(*) as c FROM messages WHERE content LIKE '%hit your limit%' OR content LIKE '%rate_limit%'`
+    ).get() as { c: number })?.c ?? 0;
+
+    const currentStatus = {
+      latestWindow: latestWindow || null,
+      peakWindowTokens,
+      weeklyTokens: weeklyStats?.tokens ?? 0,
+      weeklyRequests: weeklyStats?.requests ?? 0,
+      weeklyWindows: weeklyStats?.windows ?? 0,
+      peakWeeklyTokens,
+      rateLimitHits,
+    };
+
     return NextResponse.json({
       windows,
       hourlyAggregates,
       weeklyAggregates,
       averagePattern: avgPattern,
+      currentStatus,
     });
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : "Unknown error";
