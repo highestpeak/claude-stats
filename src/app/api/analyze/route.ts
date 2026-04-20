@@ -1,5 +1,4 @@
-import { NextResponse } from 'next/server';
-import { execFile } from 'child_process';
+import { spawn } from 'child_process';
 import { getDb } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
@@ -23,7 +22,6 @@ export async function POST(req: Request) {
       `[${p.timestamp.slice(0, 16)}] [${p.project_name}] ${p.content.slice(0, 300)}`
     ).join('\n');
 
-    // Build the analysis prompt
     const defaultInstruction = `请分析：
 1. 使用模式和习惯（什么类型的任务最多）
 2. 效率建议（哪些重复性任务可以优化）
@@ -40,26 +38,56 @@ ${summaries}
 
 ${userPrompt ? `用户的分析需求: ${userPrompt}` : defaultInstruction}`;
 
-    // Call local claude CLI with -p flag (non-interactive, print mode)
-    const result = await new Promise<string>((resolve, reject) => {
-      const proc = execFile('claude', ['-p', analysisPrompt], {
-        timeout: 120000,
-        maxBuffer: 1024 * 1024,
-        env: { ...process.env },
-      }, (err, stdout, stderr) => {
-        if (err) {
-          reject(new Error(stderr || err.message));
-        } else {
-          resolve(stdout.trim());
-        }
-      });
-      // Safety: kill if somehow still running
-      setTimeout(() => proc.kill(), 125000);
+    // Stream claude CLI stdout to the client
+    const stream = new ReadableStream({
+      start(controller) {
+        const proc = spawn('claude', ['-p', analysisPrompt], {
+          env: { ...process.env },
+          stdio: ['ignore', 'pipe', 'pipe'],
+        });
+
+        const timeout = setTimeout(() => {
+          proc.kill();
+          controller.close();
+        }, 120000);
+
+        proc.stdout.on('data', (chunk: Buffer) => {
+          controller.enqueue(chunk);
+        });
+
+        proc.stderr.on('data', (chunk: Buffer) => {
+          // Ignore stderr progress indicators from claude CLI
+          const text = chunk.toString();
+          if (text.includes('Error') || text.includes('error')) {
+            controller.enqueue(new TextEncoder().encode(`\n[Error: ${text.trim()}]`));
+          }
+        });
+
+        proc.on('close', () => {
+          clearTimeout(timeout);
+          controller.close();
+        });
+
+        proc.on('error', (err) => {
+          clearTimeout(timeout);
+          controller.enqueue(new TextEncoder().encode(`\n[Error: ${err.message}]`));
+          controller.close();
+        });
+      },
     });
 
-    return NextResponse.json({ analysis: result });
+    return new Response(stream, {
+      headers: {
+        'Content-Type': 'text/plain; charset=utf-8',
+        'Transfer-Encoding': 'chunked',
+        'Cache-Control': 'no-cache',
+      },
+    });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    return NextResponse.json({ error: msg }, { status: 500 });
+    return new Response(JSON.stringify({ error: msg }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 }

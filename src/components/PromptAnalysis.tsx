@@ -37,6 +37,7 @@ export default function PromptAnalysis({ prompts }: { prompts: PromptEntry[] }) 
 
   const runAnalysis = async () => {
     setAnalyzing(true);
+    setAnalysis('');
     try {
       const res = await fetch('/api/analyze', {
         method: 'POST',
@@ -46,9 +47,21 @@ export default function PromptAnalysis({ prompts }: { prompts: PromptEntry[] }) 
           userPrompt: userPrompt.trim() || undefined,
         }),
       });
-      const data = await res.json();
-      if (data.error) throw new Error(data.error);
-      setAnalysis(data.analysis);
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Analysis failed');
+      }
+      const reader = res.body?.getReader();
+      if (!reader) throw new Error('No stream');
+      const decoder = new TextDecoder();
+      let text = '';
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        text += decoder.decode(value, { stream: true });
+        setAnalysis(text);
+      }
+      if (!text.trim()) setAnalysis(null);
     } catch (e) {
       setAnalysis('Analysis failed: ' + (e instanceof Error ? e.message : String(e)));
     } finally {
@@ -113,9 +126,10 @@ export default function PromptAnalysis({ prompts }: { prompts: PromptEntry[] }) 
         >
           {analyzing ? 'Analyzing...' : 'AI Analysis'}
         </button>
-        {analysis && (
+        {analysis !== null && (
           <div className="mt-4 p-4 rounded bg-bg border border-border text-sm text-textPrimary whitespace-pre-wrap">
-            {analysis}
+            {analysis || (analyzing ? '...' : '')}
+            {analyzing && <span className="inline-block w-1.5 h-4 bg-blue-400 ml-0.5 animate-pulse align-text-bottom" />}
           </div>
         )}
       </div>
