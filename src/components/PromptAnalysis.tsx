@@ -7,6 +7,8 @@ import type { PromptEntry } from "@/lib/types";
 const EXCLUDED_WORDS_KEY = "claude-stats-excluded-words";
 
 export default function PromptAnalysis({ prompts }: { prompts: PromptEntry[] }) {
+  const [analysis, setAnalysis] = useState<string | null>(null);
+  const [analyzing, setAnalyzing] = useState(false);
   const [excludedWords, setExcludedWords] = useState<Set<string>>(() => {
     if (typeof window === "undefined") return new Set();
     try {
@@ -31,6 +33,26 @@ export default function PromptAnalysis({ prompts }: { prompts: PromptEntry[] }) 
     setExcludedWords(new Set());
     localStorage.removeItem(EXCLUDED_WORDS_KEY);
   }, []);
+
+  const runAnalysis = async () => {
+    setAnalyzing(true);
+    try {
+      const res = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          topWords: filteredWords.map(w => w.word),
+        }),
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      setAnalysis(data.analysis);
+    } catch (e) {
+      setAnalysis('Analysis failed: ' + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setAnalyzing(false);
+    }
+  };
 
   const lengthBuckets = useMemo(() => {
     const b = { Short: 0, Medium: 0, Long: 0 };
@@ -74,6 +96,18 @@ export default function PromptAnalysis({ prompts }: { prompts: PromptEntry[] }) 
             onClick={resetExcluded}
             className="text-xs text-blue-400 hover:text-blue-300 mt-2"
           >Reset excluded ({excludedWords.size})</button>
+        )}
+        <button
+          onClick={runAnalysis}
+          disabled={analyzing}
+          className="w-full mt-4 px-4 py-2 rounded bg-blue-600 hover:bg-blue-700 text-white text-sm disabled:opacity-50 transition-colors"
+        >
+          {analyzing ? 'Analyzing...' : 'AI Analysis'}
+        </button>
+        {analysis && (
+          <div className="mt-4 p-4 rounded bg-bg border border-border text-sm text-textPrimary whitespace-pre-wrap">
+            {analysis}
+          </div>
         )}
       </div>
 
