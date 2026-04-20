@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback, useEffect } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { topWords, CHART_TOOLTIP_STYLE } from "@/lib/utils";
 import type { PromptEntry } from "@/lib/types";
@@ -11,6 +11,15 @@ export default function PromptAnalysis({ prompts }: { prompts: PromptEntry[] }) 
   const [analyzing, setAnalyzing] = useState(false);
   const [userPrompt, setUserPrompt] = useState("");
   const [showModal, setShowModal] = useState(false);
+  const [pastAnalyses, setPastAnalyses] = useState<Array<{ id: number; created_at: string; user_prompt: string | null; result: string }>>([]);
+
+  // Fetch past analyses on mount
+  useEffect(() => {
+    fetch('/api/analyze?pageSize=5')
+      .then(r => r.json())
+      .then(d => setPastAnalyses(d.data || []))
+      .catch(() => {});
+  }, []);
   const [excludedWords, setExcludedWords] = useState<Set<string>>(() => {
     if (typeof window === "undefined") return new Set();
     try {
@@ -64,6 +73,11 @@ export default function PromptAnalysis({ prompts }: { prompts: PromptEntry[] }) 
         setAnalysis(text);
       }
       if (!text.trim()) setAnalysis(null);
+      // Refresh past analyses list
+      fetch('/api/analyze?pageSize=5')
+        .then(r => r.json())
+        .then(d => setPastAnalyses(d.data || []))
+        .catch(() => {});
     } catch (e) {
       setAnalysis('Analysis failed: ' + (e instanceof Error ? e.message : String(e)));
     } finally {
@@ -121,22 +135,30 @@ export default function PromptAnalysis({ prompts }: { prompts: PromptEntry[] }) 
           className="w-full mt-4 px-3 py-2 rounded bg-bg border border-border text-sm text-textPrimary placeholder-textSecondary focus:outline-none focus:border-blue-500 resize-none"
           rows={2}
         />
-        <div className="flex gap-2 mt-2">
-          <button
-            onClick={runAnalysis}
-            disabled={analyzing}
-            className="flex-1 px-4 py-2 rounded bg-blue-600 hover:bg-blue-700 text-white text-sm disabled:opacity-50 transition-colors"
-          >
-            {analyzing ? 'Analyzing...' : 'AI Analysis'}
-          </button>
-          {analysis !== null && !analyzing && (
-            <button
-              onClick={() => setShowModal(true)}
-              className="px-3 py-2 rounded border border-border text-textSecondary hover:text-textPrimary text-sm transition-colors"
-              title="View last analysis"
-            >View</button>
-          )}
-        </div>
+        <button
+          onClick={runAnalysis}
+          disabled={analyzing}
+          className="w-full mt-2 px-4 py-2 rounded bg-blue-600 hover:bg-blue-700 text-white text-sm disabled:opacity-50 transition-colors"
+        >
+          {analyzing ? 'Analyzing...' : 'AI Analysis'}
+        </button>
+
+        {/* Past analyses */}
+        {pastAnalyses.length > 0 && (
+          <div className="mt-3 space-y-1">
+            <p className="text-xs text-textSecondary">History</p>
+            {pastAnalyses.map((a) => (
+              <button
+                key={a.id}
+                onClick={() => { setAnalysis(a.result); setShowModal(true); }}
+                className="w-full text-left text-xs px-2 py-1.5 rounded hover:bg-bg transition-colors text-textSecondary truncate"
+              >
+                <span className="text-textPrimary">{new Date(a.created_at).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                {a.user_prompt && <span className="ml-1.5 text-blue-400">{a.user_prompt.slice(0, 30)}</span>}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Analysis Modal */}

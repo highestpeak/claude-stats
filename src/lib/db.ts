@@ -77,6 +77,16 @@ function initSchema(db: Database.Database): void {
       line_count    INTEGER NOT NULL,
       processed_at  TEXT NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS analyses (
+      id            INTEGER PRIMARY KEY AUTOINCREMENT,
+      created_at    TEXT NOT NULL,
+      user_prompt   TEXT,
+      top_words     TEXT,
+      result        TEXT NOT NULL,
+      project_filter TEXT,
+      prompt_count  INTEGER DEFAULT 0
+    );
   `);
 }
 
