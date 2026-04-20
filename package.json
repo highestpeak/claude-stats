@@ -10,6 +10,8 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.90.0",
+    "better-sqlite3": "^12.9.0",
     "date-fns": "^4.1.0",
     "html2canvas": "^1.4.1",
     "next": "14.2.29",
@@ -18,6 +20,7 @@
     "recharts": "^2.15.3"
   },
   "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^20.17.30",
     "@types/react": "^18.3.20",
     "@types/react-dom": "^18.3.6",

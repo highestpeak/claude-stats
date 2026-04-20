@@ -65,3 +65,60 @@ export interface UsageCache {
   hourlyAggregates: HourlyAggregate[]; // one entry per clock-hour that had activity
   weeklyAggregates: WeeklyAggregate[]; // one entry per calendar week that had activity
 }
+
+// Pagination
+export interface PaginationInfo {
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+}
+
+export interface PaginatedResponse<T> {
+  data: T[];
+  pagination: PaginationInfo;
+}
+
+// DB row types (match SQLite schema)
+export interface MessageRow {
+  id: string;
+  session_id: string;
+  project_id: string;
+  project_name: string;
+  role: 'user' | 'assistant';
+  timestamp: string;
+  content: string | null;
+  model: string | null;
+  input_tokens: number;
+  output_tokens: number;
+  cache_read_tokens: number;
+  cache_creation_tokens: number;
+  cost_usd: number;
+  source_file: string;
+  source_line: number;
+}
+
+export interface UsageWindowRow {
+  id: number;
+  start_time: string;
+  end_time: string;
+  window_close_time: string;
+  request_count: number;
+  input_tokens: number;
+  output_tokens: number;
+  cache_read_tokens: number;
+  cache_creation_tokens: number;
+  total_tokens: number;
+  active_duration_sec: number;
+  active_periods: number;
+  peak_minute_tokens: number;
+}
+
+export interface WindowTimelineRow {
+  id: number;
+  window_id: number;
+  timestamp: string;
+  minutes_from_start: number;
+  tokens: number;
+  cumulative_tokens: number;
+}
