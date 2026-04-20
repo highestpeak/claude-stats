@@ -7,10 +7,22 @@ interface Props {
   hourCounts: Record<string, number>;
 }
 
+function utcHourToLocal(utcHour: number): number {
+  const offsetHours = -(new Date().getTimezoneOffset() / 60);
+  return ((utcHour + offsetHours) % 24 + 24) % 24;
+}
+
 export default function HourlyChart({ hourCounts }: Props) {
+  // Convert UTC hour keys to local timezone
+  const localCounts: Record<number, number> = {};
+  for (const [utcH, count] of Object.entries(hourCounts)) {
+    const localH = utcHourToLocal(Number(utcH));
+    localCounts[localH] = (localCounts[localH] || 0) + count;
+  }
+
   const data = Array.from({ length: 24 }, (_, i) => ({
     hour: `${i}:00`,
-    count: hourCounts[String(i)] || 0,
+    count: localCounts[i] || 0,
   }));
 
   return (

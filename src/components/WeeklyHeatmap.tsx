@@ -16,7 +16,24 @@ interface Props {
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 // Map JS getDay() (0=Sun..6=Sat) to our column index (0=Mon..6=Sun)
 const JS_DOW_TO_COL = [6, 0, 1, 2, 3, 4, 5];
-const HOURS = Array.from({ length: 24 }, (_, i) => i);
+
+/** Convert UTC hour (from API) to local hour, accounting for timezone offset. */
+function utcHourToLocal(utcHour: number): number {
+  // new Date().getTimezoneOffset() returns minutes, negative for east of UTC
+  // e.g. UTC+8 → -480, so localHour = utcHour - (-480/60) = utcHour + 8
+  const offsetHours = -(new Date().getTimezoneOffset() / 60);
+  return ((utcHour + offsetHours) % 24 + 24) % 24;
+}
+
+/** Build local hourCounts from UTC hourCounts. */
+function toLocalHourCounts(utcCounts: Record<string, number>): Record<string, number> {
+  const local: Record<string, number> = {};
+  for (const [utcH, count] of Object.entries(utcCounts)) {
+    const localH = utcHourToLocal(Number(utcH));
+    local[String(localH)] = (local[String(localH)] || 0) + count;
+  }
+  return local;
+}
 
 const RANGES = ['7d', '30d', '90d', 'all'] as const;
 type Range = (typeof RANGES)[number];
@@ -45,7 +62,17 @@ function activityLabel(intensity: number): string {
 
 export default function WeeklyHeatmap({ dailyActivity, hourCounts }: Props) {
   const [range, setRange] = useState<Range>('all');
+  const [startHour, setStartHour] = useState(0);
   const [tooltip, setTooltip] = useState<{ x: number; y: number; text: string } | null>(null);
+
+  // Convert UTC hourCounts to local timezone
+  const localHourCounts = useMemo(() => toLocalHourCounts(hourCounts), [hourCounts]);
+
+  // Build ordered hour list starting from startHour
+  const orderedHours = useMemo(
+    () => Array.from({ length: 24 }, (_, i) => (startHour + i) % 24),
+    [startHour],
+  );
 
   const { grid, maxCell } = useMemo(() => {
     // Filter dailyActivity by range
@@ -69,24 +96,24 @@ export default function WeeklyHeatmap({ dailyActivity, hourCounts }: Props) {
     }
 
     const totalDayMsgs = dayTotals.reduce((s, v) => s + v, 0) || 1;
-    const totalHourMsgs = Object.values(hourCounts).reduce((s, v) => s + v, 0) || 1;
+    const totalHourMsgs = Object.values(localHourCounts).reduce((s, v) => s + v, 0) || 1;
 
-    // Build grid[hour][dayCol] with joint probability
+    // Build grid keyed by orderedHours index → [dayCol]
     let mx = 0;
     const g: number[][] = [];
-    for (const h of HOURS) {
+    for (const h of orderedHours) {
       const row: number[] = [];
       for (let col = 0; col < 7; col++) {
         const val =
           (dayTotals[col] / totalDayMsgs) *
-          ((hourCounts[String(h)] ?? 0) / totalHourMsgs);
+          ((localHourCounts[String(h)] ?? 0) / totalHourMsgs);
         if (val > mx) mx = val;
         row.push(val);
       }
       g.push(row);
     }
     return { grid: g, maxCell: mx || 1 };
-  }, [dailyActivity, hourCounts, range]);
+  }, [dailyActivity, localHourCounts, range, orderedHours]);
 
   const handleMouseEnter = useCallback(
     (e: MouseEvent<HTMLDivElement>, hour: number, col: number, intensity: number) => {
@@ -110,21 +137,35 @@ export default function WeeklyHeatmap({ dailyActivity, hourCounts }: Props) {
     <div className="bg-card border border-border rounded-lg p-5">
       <h3 className="text-textPrimary font-semibold mb-4">Activity by Day &amp; Hour</h3>
 
-      {/* Time range selector */}
-      <div className="flex gap-1 mb-4">
-        {RANGES.map((r) => (
-          <button
-            key={r}
-            onClick={() => setRange(r)}
-            className={`px-3 py-1 text-xs rounded ${
-              range === r
-                ? 'bg-blue-600 text-white'
-                : 'text-textSecondary hover:text-textPrimary'
-            }`}
+      {/* Controls: time range + start hour */}
+      <div className="flex items-center gap-4 mb-4 flex-wrap">
+        <div className="flex gap-1">
+          {RANGES.map((r) => (
+            <button
+              key={r}
+              onClick={() => setRange(r)}
+              className={`px-3 py-1 text-xs rounded ${
+                range === r
+                  ? 'bg-blue-600 text-white'
+                  : 'text-textSecondary hover:text-textPrimary'
+              }`}
+            >
+              {RANGE_LABELS[r]}
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-textSecondary">Start</span>
+          <select
+            value={startHour}
+            onChange={(e) => setStartHour(Number(e.target.value))}
+            className="bg-bg border border-border rounded px-2 py-0.5 text-xs text-textPrimary focus:outline-none focus:border-blue-500"
           >
-            {RANGE_LABELS[r]}
-          </button>
-        ))}
+            {Array.from({ length: 24 }, (_, i) => (
+              <option key={i} value={i}>{`${i}:00`}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
       <div className="weekly-heatmap-container overflow-x-auto relative">
@@ -141,14 +182,14 @@ export default function WeeklyHeatmap({ dailyActivity, hourCounts }: Props) {
           ))}
         </div>
 
-        {/* Rows = hours, Cols = days */}
-        {HOURS.map((h) => (
+        {/* Rows = hours (from startHour), Cols = days */}
+        {orderedHours.map((h, rowIdx) => (
           <div key={h} className="flex items-center gap-1 mb-1">
             <span className="text-xs text-textSecondary w-9 shrink-0 text-right pr-1">
               {h % 3 === 0 ? `${h}:00` : ''}
             </span>
             {DAYS.map((_, col) => {
-              const raw = grid[h][col];
+              const raw = grid[rowIdx][col];
               const intensity = raw / maxCell;
               return (
                 <div
