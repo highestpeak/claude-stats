@@ -21,7 +21,7 @@ export default function TokensPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("/api/stats")
+    fetch("/api/tokens")
       .then((r) => {
         if (!r.ok) throw new Error("Failed to load stats");
         return r.json();

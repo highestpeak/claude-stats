@@ -1,55 +1,150 @@
 // src/app/usage/page.tsx
 "use client";
-import { useState, useEffect } from "react";
-import type { UsageCache, UsageWindow } from "@/lib/types";
+import { useState, useEffect, useCallback } from "react";
+import type {
+  UsageWindowRow,
+  WindowTimelineRow,
+  HourlyAggregate,
+  WeeklyAggregate,
+  PaginationInfo,
+  UsageWindow,
+} from "@/lib/types";
 import { formatNumber } from "@/lib/utils";
 import WindowBurndownChart from "@/components/WindowBurndownChart";
 import HourlyUsageChart from "@/components/HourlyUsageChart";
 import WeeklyUsageChart from "@/components/WeeklyUsageChart";
 import ExportButton from "@/components/ExportButton";
 
-export default function UsagePage() {
-  const [cache, setCache] = useState<UsageCache | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [selectedIdx, setSelectedIdx] = useState(0);
+interface UsageResponse {
+  windows: {
+    data: UsageWindowRow[];
+    pagination: PaginationInfo;
+  };
+  hourlyAggregates: HourlyAggregate[];
+  weeklyAggregates: WeeklyAggregate[];
+}
 
+const WINDOWS_PAGE_SIZE = 20;
+
+/** Convert a UsageWindowRow + timeline data into the UsageWindow shape the chart expects */
+function toUsageWindow(row: UsageWindowRow, timeline: WindowTimelineRow[]): UsageWindow {
+  return {
+    id: String(row.id),
+    startTime: row.start_time,
+    endTime: row.end_time,
+    inputTokens: row.input_tokens,
+    outputTokens: row.output_tokens,
+    cacheReadTokens: row.cache_read_tokens,
+    cacheCreationTokens: row.cache_creation_tokens,
+    totalTokens: row.total_tokens,
+    requestCount: row.request_count,
+    timeline: timeline.map((t) => ({
+      timestamp: t.timestamp,
+      minutesFromStart: t.minutes_from_start,
+      tokens: t.tokens,
+      cumulativeTokens: t.cumulative_tokens,
+    })),
+  };
+}
+
+export default function UsagePage() {
+  const [windows, setWindows]               = useState<UsageWindowRow[]>([]);
+  const [windowsPagination, setWindowsPagination] = useState<PaginationInfo | null>(null);
+  const [windowsPage, setWindowsPage]       = useState(1);
+  const [hourly, setHourly]                 = useState<HourlyAggregate[]>([]);
+  const [weekly, setWeekly]                 = useState<WeeklyAggregate[]>([]);
+  const [error, setError]                   = useState<string | null>(null);
+  const [loading, setLoading]               = useState(true);
+
+  // Selected window + its timeline
+  const [selectedWindowId, setSelectedWindowId] = useState<number | null>(null);
+  const [timeline, setTimeline]             = useState<WindowTimelineRow[]>([]);
+  const [timelineLoading, setTimelineLoading] = useState(false);
+
+  // Fetch windows (paginated) + aggregates
   useEffect(() => {
-    fetch("/api/usage")
+    setLoading(true);
+    const params = new URLSearchParams();
+    params.set("page", String(windowsPage));
+    params.set("pageSize", String(WINDOWS_PAGE_SIZE));
+
+    fetch(`/api/usage?${params}`)
       .then((r) =>
         r.ok ? r.json() : r.json().then((e: { error: string }) => { throw new Error(e.error); })
       )
-      .then(setCache)
-      .catch((e: Error) => setError(e.message));
+      .then((data: UsageResponse) => {
+        setWindows(data.windows.data || []);
+        setWindowsPagination(data.windows.pagination || null);
+        setHourly(data.hourlyAggregates || []);
+        setWeekly(data.weeklyAggregates || []);
+        setLoading(false);
+        // Auto-select first window if none selected
+        if (data.windows.data?.length > 0 && selectedWindowId === null) {
+          setSelectedWindowId(data.windows.data[0].id);
+        }
+      })
+      .catch((e: Error) => {
+        setError(e.message);
+        setLoading(false);
+      });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [windowsPage]);
+
+  // Fetch timeline when selected window changes
+  const fetchTimeline = useCallback((windowId: number) => {
+    setTimelineLoading(true);
+    fetch(`/api/usage/${windowId}/timeline`)
+      .then((r) => {
+        if (!r.ok) throw new Error("Failed to load timeline");
+        return r.json();
+      })
+      .then((rows: WindowTimelineRow[]) => {
+        setTimeline(rows);
+        setTimelineLoading(false);
+      })
+      .catch(() => {
+        setTimeline([]);
+        setTimelineLoading(false);
+      });
   }, []);
+
+  useEffect(() => {
+    if (selectedWindowId !== null) {
+      fetchTimeline(selectedWindowId);
+    }
+  }, [selectedWindowId, fetchTimeline]);
 
   if (error) {
     return (
       <main className="p-6 space-y-2">
         <p className="text-red-400">Error: {error}</p>
         <p className="text-sm text-textSecondary">
-          Generate the cache first:{" "}
+          Populate the database first:{" "}
           <code className="bg-card px-1 py-0.5 rounded text-xs">
-            node scripts/collect-usage.mjs
-          </code>
+            node scripts/collect-to-db.mjs
+          </code>{" "}
+          or use the Refresh button in the nav bar.
         </p>
       </main>
     );
   }
 
-  if (!cache) {
+  if (loading && windows.length === 0) {
     return <main className="p-6 text-textSecondary">Loading...</main>;
   }
 
-  const totalTokens = cache.windows.reduce((s, w) => s + w.totalTokens, 0);
-  const totalRequests = cache.windows.reduce((s, w) => s + w.requestCount, 0);
-  const peakWindow: UsageWindow | undefined = cache.windows.reduce<UsageWindow | undefined>(
-    (m, w) => (!m || w.totalTokens > m.totalTokens ? w : m),
+  const totalTokens = windowsPagination
+    ? windows.reduce((s, w) => s + w.total_tokens, 0)
+    : 0;
+  const totalRequests = windows.reduce((s, w) => s + w.request_count, 0);
+  const peakWindow = windows.reduce<UsageWindowRow | undefined>(
+    (m, w) => (!m || w.total_tokens > m.total_tokens ? w : m),
     undefined
   );
 
-  // Show last 20 windows, newest first
-  const recentWindows = [...cache.windows].slice(-20).reverse();
-  const selectedWindow = recentWindows[selectedIdx];
+  // Build the selected UsageWindow for the chart
+  const selectedRow = windows.find((w) => w.id === selectedWindowId);
+  const selectedUsageWindow = selectedRow ? toUsageWindow(selectedRow, timeline) : null;
 
   const today = new Date().toISOString().slice(0, 10);
   const filename = `claude-stats-usage-${today}.png`;
@@ -64,13 +159,13 @@ export default function UsagePage() {
 
       {/* Overview cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard label="Total Requests" value={formatNumber(totalRequests)} />
-        <StatCard label="All-Time Tokens" value={formatNumber(totalTokens)} />
+        <StatCard label="Requests (page)" value={formatNumber(totalRequests)} />
+        <StatCard label="Tokens (page)" value={formatNumber(totalTokens)} />
         <StatCard
           label="Peak Window"
-          value={peakWindow ? formatNumber(peakWindow.totalTokens) : "—"}
+          value={peakWindow ? formatNumber(peakWindow.total_tokens) : "—"}
         />
-        <StatCard label="Total Windows" value={formatNumber(cache.windows.length)} />
+        <StatCard label="Total Windows" value={windowsPagination ? formatNumber(windowsPagination.total) : "—"} />
       </div>
 
       {/* Window burndown */}
@@ -78,7 +173,7 @@ export default function UsagePage() {
         <h2 className="text-sm font-medium text-textSecondary mb-3">
           5-Hour Window Burndown
         </h2>
-        {recentWindows.length === 0 ? (
+        {windows.length === 0 ? (
           <p className="text-textSecondary text-sm">No windows recorded yet.</p>
         ) : (
           <div className="flex gap-4">
@@ -86,14 +181,15 @@ export default function UsagePage() {
             <div className="w-52 shrink-0">
               <p className="text-xs text-textSecondary mb-2">Recent windows</p>
               <ul className="space-y-1 max-h-64 overflow-y-auto pr-1">
-                {recentWindows.map((w, i) => {
-                  const start = new Date(w.startTime);
+                {windows.map((w) => {
+                  const start = new Date(w.start_time);
+                  const isSelected = w.id === selectedWindowId;
                   return (
                     <li key={w.id}>
                       <button
-                        onClick={() => setSelectedIdx(i)}
+                        onClick={() => setSelectedWindowId(w.id)}
                         className={`w-full text-left text-xs px-2 py-1.5 rounded transition-colors ${
-                          i === selectedIdx
+                          isSelected
                             ? "bg-blue-600 text-white"
                             : "text-textSecondary hover:bg-bg"
                         }`}
@@ -103,20 +199,44 @@ export default function UsagePage() {
                           {start.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                         </span>
                         <span
-                          className={i === selectedIdx ? "text-blue-200" : "text-textSecondary"}
+                          className={isSelected ? "text-blue-200" : "text-textSecondary"}
                         >
-                          {formatNumber(w.totalTokens)} tokens · {w.requestCount} req
+                          {formatNumber(w.total_tokens)} tokens · {w.request_count} req
                         </span>
                       </button>
                     </li>
                   );
                 })}
               </ul>
+              {/* Window pagination */}
+              {windowsPagination && windowsPagination.totalPages > 1 && (
+                <div className="flex items-center justify-between mt-2 text-xs">
+                  <button
+                    onClick={() => setWindowsPage((p) => Math.max(1, p - 1))}
+                    disabled={windowsPage <= 1}
+                    className="px-2 py-1 rounded border border-border text-textSecondary hover:text-textPrimary disabled:opacity-30"
+                  >Prev</button>
+                  <span className="text-textSecondary">
+                    {windowsPagination.page}/{windowsPagination.totalPages}
+                  </span>
+                  <button
+                    onClick={() => setWindowsPage((p) => Math.min(windowsPagination.totalPages, p + 1))}
+                    disabled={windowsPage >= windowsPagination.totalPages}
+                    className="px-2 py-1 rounded border border-border text-textSecondary hover:text-textPrimary disabled:opacity-30"
+                  >Next</button>
+                </div>
+              )}
             </div>
 
             {/* Burndown chart */}
             <div className="flex-1 min-w-0">
-              {selectedWindow && <WindowBurndownChart window={selectedWindow} />}
+              {timelineLoading ? (
+                <p className="text-textSecondary text-sm py-8 text-center">Loading timeline...</p>
+              ) : selectedUsageWindow ? (
+                <WindowBurndownChart window={selectedUsageWindow} />
+              ) : (
+                <p className="text-textSecondary text-sm py-8 text-center">Select a window</p>
+              )}
             </div>
           </div>
         )}
@@ -126,11 +246,11 @@ export default function UsagePage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <section className="bg-card rounded-xl p-4">
           <h2 className="text-sm font-medium text-textSecondary mb-3">Hourly Token Usage</h2>
-          <HourlyUsageChart data={cache.hourlyAggregates} />
+          <HourlyUsageChart data={hourly} />
         </section>
         <section className="bg-card rounded-xl p-4">
           <h2 className="text-sm font-medium text-textSecondary mb-3">Weekly Token Usage</h2>
-          <WeeklyUsageChart data={cache.weeklyAggregates} />
+          <WeeklyUsageChart data={weekly} />
         </section>
       </div>
     </main>

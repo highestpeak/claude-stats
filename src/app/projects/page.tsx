@@ -3,37 +3,39 @@ import { useEffect, useState } from "react";
 import ProjectChart from "@/components/ProjectChart";
 import ProjectTable from "@/components/ProjectTable";
 import { formatNumber } from "@/lib/utils";
-import type { ProjectStats } from "@/lib/types";
+import type { ProjectStats, PaginationInfo } from "@/lib/types";
 import ExportButton from "@/components/ExportButton";
 
+const PAGE_SIZE = 20;
+
 export default function ProjectsPage() {
-  const [projects, setProjects] = useState<ProjectStats[]>([]);
-  const [loading, setLoading]   = useState(true);
-  const [error, setError]       = useState<string | null>(null);
+  const [projects, setProjects]       = useState<ProjectStats[]>([]);
+  const [pagination, setPagination]   = useState<PaginationInfo | null>(null);
+  const [page, setPage]               = useState(1);
+  const [loading, setLoading]         = useState(true);
+  const [error, setError]             = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("/api/projects")
+    setLoading(true);
+    const params = new URLSearchParams();
+    params.set("page", String(page));
+    params.set("pageSize", String(PAGE_SIZE));
+
+    fetch(`/api/projects?${params}`)
       .then((r) => {
         if (!r.ok) throw new Error("Failed to load projects");
         return r.json();
       })
       .then((data) => {
-        setProjects(Array.isArray(data) ? data : []);
+        setProjects(data.data || []);
+        setPagination(data.pagination || null);
         setLoading(false);
       })
       .catch((e: Error) => {
         setError(e.message);
         setLoading(false);
       });
-  }, []);
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p className="text-textSecondary">Loading projects...</p>
-      </div>
-    );
-  }
+  }, [page]);
 
   if (error) {
     return (
@@ -44,7 +46,7 @@ export default function ProjectsPage() {
   }
 
   const totalMessages = projects.reduce((s, p) => s + p.messageCount, 0);
-  const mostActive    = projects[0];
+  const mostActive    = projects.length > 0 && page === 1 ? projects[0] : null;
 
   return (
     <main id="export-projects" className="max-w-7xl mx-auto px-4 py-8">
@@ -56,7 +58,7 @@ export default function ProjectsPage() {
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
         <div className="bg-card border border-border rounded-lg p-5">
           <p className="text-textSecondary text-sm">Total Projects</p>
-          <p className="text-3xl font-bold mt-1">{projects.length}</p>
+          <p className="text-3xl font-bold mt-1">{pagination?.total ?? projects.length}</p>
         </div>
         <div className="bg-card border border-border rounded-lg p-5">
           <p className="text-textSecondary text-sm">Most Active</p>
@@ -65,14 +67,41 @@ export default function ProjectsPage() {
           </p>
         </div>
         <div className="bg-card border border-border rounded-lg p-5">
-          <p className="text-textSecondary text-sm">Total Messages</p>
+          <p className="text-textSecondary text-sm">Total Messages (this page)</p>
           <p className="text-3xl font-bold mt-1">{formatNumber(totalMessages)}</p>
         </div>
       </div>
 
       <div className="space-y-6">
-        <ProjectChart projects={projects.slice(0, 10)} />
-        <ProjectTable projects={projects} />
+        {/* Top 10 chart only shown on first page */}
+        {page === 1 && <ProjectChart projects={projects.slice(0, 10)} />}
+
+        {loading ? (
+          <div className="bg-card border border-border rounded-lg p-8 text-center">
+            <p className="text-textSecondary">Loading projects...</p>
+          </div>
+        ) : (
+          <>
+            <ProjectTable projects={projects} />
+            {pagination && pagination.totalPages > 1 && (
+              <div className="flex items-center justify-center gap-4 mt-4">
+                <button
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page <= 1}
+                  className="px-3 py-1 text-sm rounded border border-border text-textSecondary hover:text-textPrimary disabled:opacity-30"
+                >Prev</button>
+                <span className="text-sm text-textSecondary">
+                  Page {pagination.page} of {pagination.totalPages} ({pagination.total.toLocaleString()} total)
+                </span>
+                <button
+                  onClick={() => setPage((p) => Math.min(pagination.totalPages, p + 1))}
+                  disabled={page >= pagination.totalPages}
+                  className="px-3 py-1 text-sm rounded border border-border text-textSecondary hover:text-textPrimary disabled:opacity-30"
+                >Next</button>
+              </div>
+            )}
+          </>
+        )}
       </div>
     </main>
   );
