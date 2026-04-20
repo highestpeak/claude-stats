@@ -35,6 +35,7 @@ function openDb() {
   const db = new Database(DB_PATH);
   db.pragma('journal_mode = WAL');
   db.pragma('foreign_keys = ON');
+  db.pragma('busy_timeout = 5000');
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS messages (
@@ -144,8 +145,17 @@ function computeCost(prices, inputTokens, outputTokens, cacheReadTokens, cacheCr
 }
 
 function decodeProjectName(dirName) {
-  // Directory names encode slashes as dashes: "-Users-zhangjike-code-..." → "/Users/zhangjike/code/..."
-  return dirName.replace(/-/g, '/');
+  // Strip encoded home dir prefix, keep remaining string as-is (dashes intact).
+  // We can't distinguish path-separator dashes from literal dashes in names,
+  // so we only strip the known home prefix for a shorter display name.
+  // e.g. "-Users-zhangjike-code-my-project" → "code-my-project"
+  const home = homedir();
+  const encodedHome = home.replace(/\//g, '-'); // '/Users/zhangjike' → '-Users-zhangjike'
+  if (dirName.startsWith(encodedHome)) {
+    const rest = dirName.slice(encodedHome.length).replace(/^-/, '');
+    return rest || dirName;
+  }
+  return dirName.replace(/^-/, '');
 }
 
 // ---------------------------------------------------------------------------

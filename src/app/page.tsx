@@ -57,7 +57,7 @@ export default function Home() {
         <div className="bg-card border border-border rounded-lg p-8 text-center">
           <p className="text-red-400 text-lg">Error: {error}</p>
           <p className="text-textSecondary mt-2 text-sm">
-            Make sure ~/.claude/stats-cache.json exists
+            Run <code className="bg-bg px-1 rounded text-xs">node scripts/collect-to-db.mjs</code> or use the Refresh button
           </p>
         </div>
       </div>
