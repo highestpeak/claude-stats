@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // scripts/install-hook.mjs
-// One-shot: adds a Claude Code Stop hook that auto-runs collect-usage.mjs after
+// One-shot: adds a Claude Code Stop hook that auto-runs collect-to-db.mjs after
 // every session. Safe to re-run — checks for an existing entry first.
 
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';

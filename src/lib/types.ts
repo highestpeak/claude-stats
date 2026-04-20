@@ -59,13 +59,6 @@ export interface WeeklyAggregate {
   requests: number;
 }
 
-export interface UsageCache {
-  generatedAt: string;                // ISO 8601 when the script last ran
-  windows: UsageWindow[];             // all historical 5h windows, oldest first
-  hourlyAggregates: HourlyAggregate[]; // one entry per clock-hour that had activity
-  weeklyAggregates: WeeklyAggregate[]; // one entry per calendar week that had activity
-}
-
 // Pagination
 export interface PaginationInfo {
   page: number;
