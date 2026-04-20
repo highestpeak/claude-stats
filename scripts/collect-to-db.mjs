@@ -7,9 +7,25 @@
 
 import { createHash } from 'node:crypto';
 import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, basename } from 'node:path';
 import { homedir } from 'node:os';
 import Database from 'better-sqlite3';
+
+/** Recursively find all .jsonl files under a directory. */
+function findJsonlFiles(dir) {
+  const results = [];
+  let entries;
+  try { entries = readdirSync(dir, { withFileTypes: true }); } catch { return results; }
+  for (const entry of entries) {
+    const full = join(dir, entry.name);
+    if (entry.isDirectory()) {
+      results.push(...findJsonlFiles(full));
+    } else if (entry.isFile() && entry.name.endsWith('.jsonl')) {
+      results.push(full);
+    }
+  }
+  return results;
+}
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -200,16 +216,12 @@ function collectAndInsert(db) {
     const projectId = dir;
     const projectName = decodeProjectName(dir);
 
-    let files;
-    try {
-      files = readdirSync(projectPath).filter((f) => f.endsWith('.jsonl'));
-    } catch {
-      continue;
-    }
+    const jsonlFiles = findJsonlFiles(projectPath);
 
-    for (const file of files) {
-      const filePath = join(projectPath, file);
-      const sessionId = file.replace(/\.jsonl$/, '');
+    for (const filePath of jsonlFiles) {
+      // Session ID: use the filename without extension
+      // For subagents: "agent-xxx.jsonl" → "agent-xxx"
+      const sessionId = basename(filePath, '.jsonl');
 
       let stat;
       try {
