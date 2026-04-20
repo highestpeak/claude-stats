@@ -10,6 +10,7 @@ export default function PromptAnalysis({ prompts }: { prompts: PromptEntry[] }) 
   const [analysis, setAnalysis] = useState<string | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [userPrompt, setUserPrompt] = useState("");
+  const [showModal, setShowModal] = useState(false);
   const [excludedWords, setExcludedWords] = useState<Set<string>>(() => {
     if (typeof window === "undefined") return new Set();
     try {
@@ -38,6 +39,7 @@ export default function PromptAnalysis({ prompts }: { prompts: PromptEntry[] }) 
   const runAnalysis = async () => {
     setAnalyzing(true);
     setAnalysis('');
+    setShowModal(true);
     try {
       const res = await fetch('/api/analyze', {
         method: 'POST',
@@ -119,20 +121,57 @@ export default function PromptAnalysis({ prompts }: { prompts: PromptEntry[] }) 
           className="w-full mt-4 px-3 py-2 rounded bg-bg border border-border text-sm text-textPrimary placeholder-textSecondary focus:outline-none focus:border-blue-500 resize-none"
           rows={2}
         />
-        <button
-          onClick={runAnalysis}
-          disabled={analyzing}
-          className="w-full mt-2 px-4 py-2 rounded bg-blue-600 hover:bg-blue-700 text-white text-sm disabled:opacity-50 transition-colors"
-        >
-          {analyzing ? 'Analyzing...' : 'AI Analysis'}
-        </button>
-        {analysis !== null && (
-          <div className="mt-4 p-4 rounded bg-bg border border-border text-sm text-textPrimary whitespace-pre-wrap">
-            {analysis || (analyzing ? '...' : '')}
-            {analyzing && <span className="inline-block w-1.5 h-4 bg-blue-400 ml-0.5 animate-pulse align-text-bottom" />}
-          </div>
-        )}
+        <div className="flex gap-2 mt-2">
+          <button
+            onClick={runAnalysis}
+            disabled={analyzing}
+            className="flex-1 px-4 py-2 rounded bg-blue-600 hover:bg-blue-700 text-white text-sm disabled:opacity-50 transition-colors"
+          >
+            {analyzing ? 'Analyzing...' : 'AI Analysis'}
+          </button>
+          {analysis !== null && !analyzing && (
+            <button
+              onClick={() => setShowModal(true)}
+              className="px-3 py-2 rounded border border-border text-textSecondary hover:text-textPrimary text-sm transition-colors"
+              title="View last analysis"
+            >View</button>
+          )}
+        </div>
       </div>
+
+      {/* Analysis Modal */}
+      {showModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+          onClick={(e) => { if (e.target === e.currentTarget && !analyzing) setShowModal(false); }}
+        >
+          <div className="bg-card border border-border rounded-xl w-full max-w-2xl max-h-[80vh] flex flex-col mx-4 shadow-2xl">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+              <h3 className="text-textPrimary font-semibold">AI Analysis</h3>
+              {!analyzing && (
+                <button
+                  onClick={() => setShowModal(false)}
+                  className="text-textSecondary hover:text-textPrimary text-lg leading-none"
+                >&times;</button>
+              )}
+            </div>
+            <div className="flex-1 overflow-y-auto px-6 py-4">
+              <div className="text-sm text-textPrimary whitespace-pre-wrap leading-relaxed">
+                {analysis || (analyzing ? '' : '')}
+                {analyzing && <span className="inline-block w-1.5 h-4 bg-blue-400 ml-0.5 animate-pulse align-text-bottom" />}
+              </div>
+            </div>
+            {!analyzing && (
+              <div className="px-6 py-3 border-t border-border flex justify-end">
+                <button
+                  onClick={() => setShowModal(false)}
+                  className="px-4 py-1.5 rounded text-sm text-textSecondary hover:text-textPrimary border border-border hover:border-textSecondary transition-colors"
+                >Close</button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="bg-card border border-border rounded-lg p-5">
         <h3 className="text-textPrimary font-semibold mb-3">Prompt Length</h3>
