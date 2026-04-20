@@ -1,6 +1,7 @@
 "use client";
 
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from "recharts";
+import { CHART_TOOLTIP_STYLE } from "@/lib/utils";
 
 interface DailyModelTokens {
   date: string;
@@ -57,8 +58,9 @@ export default function TokensOverTime({ dailyModelTokens }: Props) {
           <XAxis dataKey="date" tick={{ fill: "#8b949e", fontSize: 11 }} />
           <YAxis tick={{ fill: "#8b949e", fontSize: 11 }} tickFormatter={formatTokens} />
           <Tooltip
-            contentStyle={{ backgroundColor: "#161b22", border: "1px solid #30363d", borderRadius: 6 }}
-            labelStyle={{ color: "#e6edf3" }}
+            contentStyle={CHART_TOOLTIP_STYLE.contentStyle}
+            itemStyle={CHART_TOOLTIP_STYLE.itemStyle}
+            labelStyle={CHART_TOOLTIP_STYLE.labelStyle}
             formatter={(value: number, name: string) => [formatTokens(value), shortModelName(name)]}
           />
           <Legend formatter={shortModelName} />

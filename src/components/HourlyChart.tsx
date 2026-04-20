@@ -1,6 +1,7 @@
 "use client";
 
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
+import { CHART_TOOLTIP_STYLE } from "@/lib/utils";
 
 interface Props {
   hourCounts: Record<string, number>;
@@ -21,9 +22,9 @@ export default function HourlyChart({ hourCounts }: Props) {
           <XAxis dataKey="hour" tick={{ fill: "#8b949e", fontSize: 11 }} interval={2} />
           <YAxis tick={{ fill: "#8b949e", fontSize: 11 }} />
           <Tooltip
-            contentStyle={{ backgroundColor: "#161b22", border: "1px solid #30363d", borderRadius: 6 }}
-            labelStyle={{ color: "#e6edf3" }}
-            itemStyle={{ color: "#39d353" }}
+            contentStyle={CHART_TOOLTIP_STYLE.contentStyle}
+            itemStyle={CHART_TOOLTIP_STYLE.itemStyle}
+            labelStyle={CHART_TOOLTIP_STYLE.labelStyle}
           />
           <Bar dataKey="count" fill="#39d353" radius={[2, 2, 0, 0]} />
         </BarChart>

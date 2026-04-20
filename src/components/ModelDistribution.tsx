@@ -1,6 +1,7 @@
 "use client";
 
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
+import { CHART_TOOLTIP_STYLE } from "@/lib/utils";
 
 interface ModelUsage {
   inputTokens: number;
@@ -64,7 +65,9 @@ export default function ModelDistribution({ modelUsage }: Props) {
             ))}
           </Pie>
           <Tooltip
-            contentStyle={{ backgroundColor: "#161b22", border: "1px solid #30363d", borderRadius: 6 }}
+            contentStyle={CHART_TOOLTIP_STYLE.contentStyle}
+            itemStyle={CHART_TOOLTIP_STYLE.itemStyle}
+            labelStyle={CHART_TOOLTIP_STYLE.labelStyle}
             formatter={(value: number) => [formatTokens(value), "Tokens"]}
           />
           <Legend />

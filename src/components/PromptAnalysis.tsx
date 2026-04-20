@@ -1,7 +1,7 @@
 "use client";
 import { useMemo } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
-import { topWords } from "@/lib/utils";
+import { topWords, CHART_TOOLTIP_STYLE } from "@/lib/utils";
 import type { PromptEntry } from "@/lib/types";
 
 export default function PromptAnalysis({ prompts }: { prompts: PromptEntry[] }) {
@@ -48,7 +48,9 @@ export default function PromptAnalysis({ prompts }: { prompts: PromptEntry[] }) 
             <XAxis dataKey="name" tick={{ fill: "#8b949e", fontSize: 11 }} />
             <YAxis tick={{ fill: "#8b949e", fontSize: 11 }} />
             <Tooltip
-              contentStyle={{ backgroundColor: "#161b22", border: "1px solid #30363d", borderRadius: 6 }}
+              contentStyle={CHART_TOOLTIP_STYLE.contentStyle}
+              itemStyle={CHART_TOOLTIP_STYLE.itemStyle}
+              labelStyle={CHART_TOOLTIP_STYLE.labelStyle}
             />
             <Bar dataKey="count" fill="#3b82f6" radius={[3, 3, 0, 0]} />
           </BarChart>

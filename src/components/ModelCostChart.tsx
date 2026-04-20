@@ -1,5 +1,6 @@
 "use client";
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { CHART_TOOLTIP_STYLE } from "@/lib/utils";
 
 const MODEL_COLORS: Record<string, string> = {
   "claude-opus-4-6":           "#a855f7",
@@ -36,7 +37,9 @@ export default function ModelCostChart({ modelUsage }: { modelUsage: Record<stri
             ))}
           </Pie>
           <Tooltip
-            contentStyle={{ backgroundColor: "#161b22", border: "1px solid #30363d", borderRadius: 6 }}
+            contentStyle={CHART_TOOLTIP_STYLE.contentStyle}
+            itemStyle={CHART_TOOLTIP_STYLE.itemStyle}
+            labelStyle={CHART_TOOLTIP_STYLE.labelStyle}
             formatter={(v: number) => [`$${v.toFixed(4)}`, "Cost"]}
           />
           <Legend />

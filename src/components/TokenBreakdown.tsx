@@ -2,6 +2,7 @@
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer,
 } from "recharts";
+import { CHART_TOOLTIP_STYLE } from "@/lib/utils";
 
 const TYPE_COLORS = {
   inputTokens:             "#3b82f6",
@@ -49,7 +50,9 @@ export default function TokenBreakdown({ modelUsage }: { modelUsage: Record<stri
           <XAxis type="number" tickFormatter={fmt} tick={{ fill: "#8b949e", fontSize: 11 }} />
           <YAxis type="category" dataKey="name" tick={{ fill: "#8b949e", fontSize: 12 }} width={55} />
           <Tooltip
-            contentStyle={{ backgroundColor: "#161b22", border: "1px solid #30363d", borderRadius: 6 }}
+            contentStyle={CHART_TOOLTIP_STYLE.contentStyle}
+            itemStyle={CHART_TOOLTIP_STYLE.itemStyle}
+            labelStyle={CHART_TOOLTIP_STYLE.labelStyle}
             formatter={(v: number) => [fmt(v)]}
           />
           <Legend />

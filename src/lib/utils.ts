@@ -9,6 +9,17 @@ export const TOKEN_PRICES: Record<string, {
   'claude-haiku-4-5-20251001': { input: 0.8,  output: 4,   cacheRead: 0.08, cacheCreation: 1.0   },
 };
 
+export const CHART_TOOLTIP_STYLE = {
+  contentStyle: {
+    backgroundColor: '#161b22',
+    border: '1px solid #30363d',
+    borderRadius: 6,
+    color: '#e6edf3',
+  },
+  itemStyle: { color: '#e6edf3' },
+  labelStyle: { color: '#8b949e' },
+};
+
 /** Decode project directory name to a human-readable path string.
  *  e.g. '-Users-alice-code-myproj' + '/Users/alice' → 'code-myproj'
  */
