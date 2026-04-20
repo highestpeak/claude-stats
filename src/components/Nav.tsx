@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import RefreshButton from "@/components/RefreshButton";
 
 const TABS = [
   { href: "/",         label: "Overview"  },
@@ -29,6 +30,9 @@ export default function Nav() {
             {tab.label}
           </Link>
         ))}
+        <div className="ml-auto">
+          <RefreshButton />
+        </div>
       </div>
     </nav>
   );
