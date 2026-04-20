@@ -88,7 +88,7 @@ export default function ActivityHeatmap({ dailyActivity }: Props) {
       if (!container) return;
       const rect = container.getBoundingClientRect();
       const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top - 10;
+      const y = e.clientY - rect.top + 16;
       const dateStr = format(day.date, "MMM d, yyyy");
       const text = `${dateStr}\n${day.count} messages \u00b7 ${day.sessionCount} sessions`;
       setTooltip({ x, y, text });
@@ -101,7 +101,7 @@ export default function ActivityHeatmap({ dailyActivity }: Props) {
   return (
     <div className="bg-card border border-border rounded-lg p-5">
       <h3 className="text-textPrimary font-semibold mb-4">Activity Heatmap</h3>
-      <div className="heatmap-container overflow-x-auto relative">
+      <div className="heatmap-container overflow-x-auto overflow-y-visible relative">
         <svg
           width={leftPad + weeks.length * (cellSize + gap)}
           height={topPad + 7 * (cellSize + gap)}
@@ -150,7 +150,7 @@ export default function ActivityHeatmap({ dailyActivity }: Props) {
         {tooltip && (
           <div
             className="absolute bg-[#161b22] border border-[#30363d] text-[#e6edf3] text-xs px-2 py-1 rounded shadow-lg pointer-events-none whitespace-pre-line z-50"
-            style={{ left: tooltip.x, top: tooltip.y, transform: "translate(-50%, -100%)" }}
+            style={{ left: tooltip.x, top: tooltip.y, transform: "translate(-50%, 0)" }}
           >
             {tooltip.text}
           </div>
