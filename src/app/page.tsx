@@ -6,7 +6,6 @@ import ActivityHeatmap from "@/components/ActivityHeatmap";
 import HourlyChart from "@/components/HourlyChart";
 import TokensOverTime from "@/components/TokensOverTime";
 import ModelDistribution from "@/components/ModelDistribution";
-import DeveloperMetrics from "@/components/DeveloperMetrics";
 import WeeklyHeatmap from "@/components/WeeklyHeatmap";
 import ExportButton from "@/components/ExportButton";
 
@@ -91,6 +90,7 @@ export default function Home() {
           totalSessions={stats.totalSessions}
           totalMessages={stats.totalMessages}
           modelUsage={stats.modelUsage}
+          dailyActivity={stats.dailyActivity}
         />
 
         <ActivityHeatmap dailyActivity={stats.dailyActivity} />
@@ -107,12 +107,6 @@ export default function Home() {
 
         <TokensOverTime dailyModelTokens={stats.dailyModelTokens} />
 
-        <DeveloperMetrics
-          totalSessions={stats.totalSessions}
-          totalMessages={stats.totalMessages}
-          modelUsage={stats.modelUsage}
-          dailyActivity={stats.dailyActivity}
-        />
       </div>
     </main>
   );
