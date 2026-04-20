@@ -12,25 +12,43 @@ export default function ProjectTable({ projects }: { projects: ProjectStats[] })
             <tr className="border-b border-border">
               <th className="text-left p-3 text-textSecondary font-medium">Project</th>
               <th className="text-right p-3 text-textSecondary font-medium">Messages</th>
-              <th className="text-right p-3 text-textSecondary font-medium">Tokens</th>
+              <th className="text-right p-3 text-textSecondary font-medium">Total Tokens</th>
+              <th className="text-right p-3 text-textSecondary font-medium">Output</th>
+              <th className="text-right p-3 text-textSecondary font-medium">Cache</th>
               <th className="text-right p-3 text-textSecondary font-medium">Active Days</th>
               <th className="text-right p-3 text-textSecondary font-medium">Last Active</th>
             </tr>
           </thead>
           <tbody>
-            {projects.map((p) => (
-              <tr key={p.id} className="border-b border-border hover:bg-bg transition-colors">
-                <td className="p-3 text-textPrimary max-w-xs">
-                  <span className="block truncate" title={p.displayName}>{p.displayName}</span>
-                </td>
-                <td className="p-3 text-right tabular-nums">{formatNumber(p.messageCount)}</td>
-                <td className="p-3 text-right tabular-nums text-textSecondary">
-                  {formatNumber(p.inputTokens + p.outputTokens)}
-                </td>
-                <td className="p-3 text-right tabular-nums">{p.activeDays}</td>
-                <td className="p-3 text-right text-textSecondary">{p.lastDate.slice(0, 10)}</td>
-              </tr>
-            ))}
+            {projects.map((p) => {
+              const total = p.inputTokens + p.outputTokens + p.cacheReadTokens + p.cacheCreationTokens;
+              const cacheTotal = p.cacheReadTokens + p.cacheCreationTokens;
+              const cachePct = total > 0 ? Math.round((cacheTotal / total) * 100) : 0;
+              return (
+                <tr key={p.id} className="border-b border-border hover:bg-bg transition-colors">
+                  <td className="p-3 text-textPrimary max-w-xs">
+                    <span className="block truncate" title={p.displayName}>{p.displayName}</span>
+                  </td>
+                  <td className="p-3 text-right tabular-nums">{formatNumber(p.messageCount)}</td>
+                  <td className="p-3 text-right tabular-nums"
+                    title={`Input: ${formatNumber(p.inputTokens)}\nOutput: ${formatNumber(p.outputTokens)}\nCache Read: ${formatNumber(p.cacheReadTokens)}\nCache Create: ${formatNumber(p.cacheCreationTokens)}`}
+                  >
+                    {formatNumber(total)}
+                  </td>
+                  <td className="p-3 text-right tabular-nums text-textSecondary">
+                    {formatNumber(p.outputTokens)}
+                  </td>
+                  <td className="p-3 text-right tabular-nums text-textSecondary">
+                    <span title={`Read: ${formatNumber(p.cacheReadTokens)} · Create: ${formatNumber(p.cacheCreationTokens)}`}>
+                      {formatNumber(cacheTotal)}
+                      <span className="text-xs ml-1 text-green-500">{cachePct}%</span>
+                    </span>
+                  </td>
+                  <td className="p-3 text-right tabular-nums">{p.activeDays}</td>
+                  <td className="p-3 text-right text-textSecondary">{p.lastDate.slice(0, 10)}</td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

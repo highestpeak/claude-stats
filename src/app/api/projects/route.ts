@@ -16,6 +16,8 @@ export async function GET(request: NextRequest) {
         COUNT(CASE WHEN role='user' THEN 1 END) as messageCount,
         SUM(CASE WHEN role='assistant' THEN input_tokens ELSE 0 END) as inputTokens,
         SUM(CASE WHEN role='assistant' THEN output_tokens ELSE 0 END) as outputTokens,
+        SUM(CASE WHEN role='assistant' THEN cache_read_tokens ELSE 0 END) as cacheReadTokens,
+        SUM(CASE WHEN role='assistant' THEN cache_creation_tokens ELSE 0 END) as cacheCreationTokens,
         MIN(timestamp) as firstDate,
         MAX(timestamp) as lastDate,
         COUNT(DISTINCT DATE(timestamp)) as activeDays

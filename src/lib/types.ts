@@ -4,6 +4,8 @@ export interface ProjectStats {
   messageCount: number;
   inputTokens: number;
   outputTokens: number;
+  cacheReadTokens: number;
+  cacheCreationTokens: number;
   firstDate: string;
   lastDate: string;
   activeDays: number;
