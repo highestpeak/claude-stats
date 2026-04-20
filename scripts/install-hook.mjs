@@ -12,7 +12,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const SETTINGS_FILE = join(homedir(), '.claude', 'settings.json');
-const SCRIPT_PATH = resolve(__dirname, 'collect-usage.mjs');
+const SCRIPT_PATH = resolve(__dirname, 'collect-to-db.mjs');
 // Redirect stdout/stderr to a log file so the hook never interferes with sessions.
 const COMMAND = `node "${SCRIPT_PATH}" >> /tmp/claude-usage-collect.log 2>&1`;
 
@@ -27,7 +27,7 @@ if (!settings.hooks.Stop) settings.hooks.Stop = [];
 const alreadyInstalled = settings.hooks.Stop.some(
   (group) =>
     Array.isArray(group.hooks) &&
-    group.hooks.some((h) => typeof h.command === 'string' && h.command.includes('collect-usage'))
+    group.hooks.some((h) => typeof h.command === 'string' && h.command.includes('collect-to-db'))
 );
 
 if (alreadyInstalled) {
