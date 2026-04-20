@@ -49,10 +49,25 @@ export async function GET(request: NextRequest) {
       )
       .all() as { weekStart: string; tokens: number; requests: number }[];
 
+    // Average burndown pattern: normalized percentage at each 5-min bucket across all windows
+    const avgPattern = db
+      .prepare(
+        `SELECT
+           CAST(ROUND(wt.minutes_from_start / 5) * 5 AS INTEGER) as minute,
+           AVG(CAST(wt.cumulative_tokens AS REAL) / uw.total_tokens) as avgPct
+         FROM window_timeline wt
+         JOIN usage_windows uw ON wt.window_id = uw.id
+         WHERE uw.total_tokens > 0
+         GROUP BY minute
+         ORDER BY minute`
+      )
+      .all() as { minute: number; avgPct: number }[];
+
     return NextResponse.json({
       windows,
       hourlyAggregates,
       weeklyAggregates,
+      averagePattern: avgPattern,
     });
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : "Unknown error";

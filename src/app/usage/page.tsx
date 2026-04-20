@@ -15,6 +15,11 @@ import HourlyUsageChart from "@/components/HourlyUsageChart";
 import WeeklyUsageChart from "@/components/WeeklyUsageChart";
 import ExportButton from "@/components/ExportButton";
 
+interface AveragePoint {
+  minute: number;
+  avgPct: number;
+}
+
 interface UsageResponse {
   windows: {
     data: UsageWindowRow[];
@@ -22,6 +27,7 @@ interface UsageResponse {
   };
   hourlyAggregates: HourlyAggregate[];
   weeklyAggregates: WeeklyAggregate[];
+  averagePattern: AveragePoint[];
 }
 
 const WINDOWS_PAGE_SIZE = 20;
@@ -53,6 +59,7 @@ export default function UsagePage() {
   const [windowsPage, setWindowsPage]       = useState(1);
   const [hourly, setHourly]                 = useState<HourlyAggregate[]>([]);
   const [weekly, setWeekly]                 = useState<WeeklyAggregate[]>([]);
+  const [averagePattern, setAveragePattern] = useState<AveragePoint[]>([]);
   const [error, setError]                   = useState<string | null>(null);
   const [loading, setLoading]               = useState(true);
 
@@ -77,6 +84,7 @@ export default function UsagePage() {
         setWindowsPagination(data.windows.pagination || null);
         setHourly(data.hourlyAggregates || []);
         setWeekly(data.weeklyAggregates || []);
+        setAveragePattern(data.averagePattern || []);
         setLoading(false);
         // Auto-select first window if none selected
         if (data.windows.data?.length > 0 && selectedWindowId === null) {
@@ -233,7 +241,7 @@ export default function UsagePage() {
               {timelineLoading ? (
                 <p className="text-textSecondary text-sm py-8 text-center">Loading timeline...</p>
               ) : selectedUsageWindow ? (
-                <WindowBurndownChart window={selectedUsageWindow} />
+                <WindowBurndownChart window={selectedUsageWindow} averagePattern={averagePattern} />
               ) : (
                 <p className="text-textSecondary text-sm py-8 text-center">Select a window</p>
               )}
