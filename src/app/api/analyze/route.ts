@@ -54,7 +54,6 @@ ${userPrompt ? `用户的分析需求: ${userPrompt}` : defaultInstruction}`;
           '-p',
           '--output-format', 'stream-json',
           '--verbose',
-          '--bare',
           '--model', 'sonnet',
           analysisPrompt,
         ], {
