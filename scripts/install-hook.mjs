@@ -23,6 +23,17 @@ const settings = existsSync(SETTINGS_FILE)
 if (!settings.hooks) settings.hooks = {};
 if (!settings.hooks.Stop) settings.hooks.Stop = [];
 
+// Remove any old collect-usage hooks (renamed to collect-to-db)
+const oldCount = settings.hooks.Stop.length;
+settings.hooks.Stop = settings.hooks.Stop.filter(
+  (group) =>
+    !Array.isArray(group.hooks) ||
+    !group.hooks.some((h) => typeof h.command === 'string' && h.command.includes('collect-usage'))
+);
+if (settings.hooks.Stop.length < oldCount) {
+  console.log('[install-hook] Removed old collect-usage hook.');
+}
+
 // Avoid duplicate entries on repeated runs
 const alreadyInstalled = settings.hooks.Stop.some(
   (group) =>
